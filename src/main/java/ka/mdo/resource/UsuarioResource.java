@@ -23,12 +23,12 @@ public class UsuarioResource {
 
     @GET
     public List<UsuarioResponseDTO> getAll(){
-        return service.findAll().stream().filter(EntityClass::getAtivo).map(UsuarioResponseDTO::new).collect(Collectors.toList());
+        return service.findAll();
     }
     @GET
     @Path("/{id}")
     public UsuarioResponseDTO getById(@PathParam("id") Long id) {
-        return new UsuarioResponseDTO(service.findById(id));
+        return service.findById(id);
     }
 
     @POST
@@ -45,6 +45,6 @@ public class UsuarioResource {
     @PATCH
     @Path("/delete/{id}")
     public void delete(@PathParam("id") Long id) {
-        service.findById(id).setAtivo(false);
+        service.deleteById(id);
     }
 }
