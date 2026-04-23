@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.hibernate.annotations.Filter;
 import org.hibernate.validator.constraints.br.CPF;
 
 import java.time.LocalDate;
@@ -13,6 +14,7 @@ import java.util.Set;
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
+@Filter(name = "tenantFilter", condition = "empresa_id = :empresaId")
 public class Usuario extends EntityClass {
 
     @NotNull
@@ -41,11 +43,46 @@ public class Usuario extends EntityClass {
     @ElementCollection
     @CollectionTable(name = "usuario_perfil", joinColumns = @JoinColumn(name = "id_usuario", referencedColumnName = "id"))
     @Column(name = "perfil", length = 30)
+    @Enumerated(EnumType.STRING)
     private Set<Perfil> perfis;
+
+    /**
+     * Canais em que o usuário deseja receber notificações (atividade 032).
+     * Default aplicado na migração V9: {@code [WEBSOCKET, EMAIL]}.
+     * PUSH fica fora do default enquanto FCM é apenas stub.
+     */
+    @ElementCollection
+    @CollectionTable(name = "usuario_canais_notificacao",
+            joinColumns = @JoinColumn(name = "usuario_id", referencedColumnName = "id"))
+    @Column(name = "canal", length = 20)
+    @Enumerated(EnumType.STRING)
+    private Set<CanalNotificacao> canaisNotificacao;
 
     @OneToMany
     @JoinColumn(name = "usuario_ingresso")
     private List<Ingresso> ingressos;
+
+    /**
+     * Dados pessoais estendidos do usuário (nome completo, documento tipado,
+     * foto). Usado quando {@code Evento.exigeDadosPessoais == true}. Atividade 020.
+     * Relação 1:1 com FK do lado Usuario para simplificar navegação a partir
+     * do dono da credencial em {@code AcessoService}.
+     */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dados_pessoais_id")
+    private DadosPessoais dadosPessoais;
+
+    @ManyToOne
+    @JoinColumn(name = "empresa_id", nullable = false)
+    private Empresa empresa;
+
+    public Empresa getEmpresa() {
+        return empresa;
+    }
+
+    public void setEmpresa(Empresa empresa) {
+        this.empresa = empresa;
+    }
 
     public List<Ingresso> getIngressos() {
         return ingressos;
@@ -117,5 +154,21 @@ public class Usuario extends EntityClass {
 
     public void setNaturalidade(String naturalidade) {
         this.naturalidade = naturalidade;
+    }
+
+    public DadosPessoais getDadosPessoais() {
+        return dadosPessoais;
+    }
+
+    public void setDadosPessoais(DadosPessoais dadosPessoais) {
+        this.dadosPessoais = dadosPessoais;
+    }
+
+    public Set<CanalNotificacao> getCanaisNotificacao() {
+        return canaisNotificacao;
+    }
+
+    public void setCanaisNotificacao(Set<CanalNotificacao> canaisNotificacao) {
+        this.canaisNotificacao = canaisNotificacao;
     }
 }

@@ -1,10 +1,10 @@
 package ka.mdo.service;
 
 import ka.mdo.dto.*;
-import ka.mdo.model.Ingresso;
+import ka.mdo.model.Empresa;
 import ka.mdo.model.Perfil;
-import ka.mdo.model.TipoIngresso;
 import ka.mdo.model.Usuario;
+import ka.mdo.repository.EmpresaRepository;
 import ka.mdo.repository.IngressoRepository;
 import ka.mdo.repository.TipoIngressoRepository;
 import ka.mdo.repository.UsuarioRepository;
@@ -12,7 +12,9 @@ import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +36,31 @@ public class UsuarioService {
     @Inject
     IngressoRepository ingressoRepository;
 
+    @Inject
+    EmpresaRepository empresaRepository;
+
+    @Inject
+    JsonWebToken jwt;
+
+    private Long empresaDoJwtOpcional() {
+        try {
+            return jwt.getClaim("empresaId");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void validarMesmoTenant(Usuario usuario) {
+        Long empresaId = empresaDoJwtOpcional();
+        if (empresaId == null) {
+            throw new ForbiddenException("JWT sem empresaId");
+        }
+        if (usuario == null || usuario.getEmpresa() == null
+                || !usuario.getEmpresa().getId().equals(empresaId)) {
+            throw new ForbiddenException("Recurso pertence a outra empresa");
+        }
+    }
+
     public Usuario byLoginAndSenha(AuthUsuarioDTO authDTO) {
         String senha = hash.getHashSenha(authDTO.senha());
         Usuario usuario = repository.findByEmailAndSenha(authDTO.login(), senha);
@@ -47,13 +74,23 @@ public class UsuarioService {
     public Response insert(UsuarioDTO usuarioDTO) {
         try {
             Log.info("Requisição Usuario.insert()");
+            Long empresaId = empresaDoJwtOpcional();
+            if (empresaId == null) {
+                throw new ForbiddenException("Cadastro de usuário exige JWT com empresaId");
+            }
+            Empresa empresa = empresaRepository.findById(empresaId);
+            if (empresa == null) {
+                throw new ForbiddenException("Empresa do JWT não encontrada");
+            }
+
             Usuario usuario = new Usuario();
             usuario.setCpf(usuarioDTO.cpf());
             usuario.setNome(usuarioDTO.nome());
             usuario.setEmail(usuarioDTO.email());
             usuario.setSenha(hash.getHashSenha(usuarioDTO.senha()));
+            usuario.setEmpresa(empresa);
             Set<Perfil> a = new HashSet<Perfil>();
-            a.add(Perfil.USER);
+            a.add(Perfil.CLIENTE);
             usuario.setPerfis(a);
             Usuario teste = repository.findByCpf(usuarioDTO.cpf());
             if (teste != null) {
@@ -92,11 +129,16 @@ public class UsuarioService {
 
     @Transactional
     public Usuario update(Usuario entity) {
+        Usuario existente = repository.findById(entity.getId());
+        validarMesmoTenant(existente);
+        entity.setEmpresa(existente.getEmpresa());
         return repository.getEntityManager().merge(entity);
     }
 
     @Transactional
     public void deleteById(Long id) {
-        repository.findById(id).setAtivo(false);
+        Usuario usuario = repository.findById(id);
+        validarMesmoTenant(usuario);
+        usuario.setAtivo(false);
     }
 }

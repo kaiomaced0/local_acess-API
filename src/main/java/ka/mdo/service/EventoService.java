@@ -4,14 +4,17 @@ import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response;
 import ka.mdo.dto.EspacoEventoDTO;
 import ka.mdo.dto.EventoDTO;
 import ka.mdo.dto.EventoResponseDTO;
 import ka.mdo.model.EspacoEvento;
 import ka.mdo.model.Evento;
+import ka.mdo.repository.EmpresaRepository;
 import ka.mdo.repository.EspacoEventoRepository;
 import ka.mdo.repository.EventoRepository;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +29,27 @@ public class EventoService {
     @Inject
     EspacoEventoRepository espacoEventoRepository;
 
+    @Inject
+    EmpresaRepository empresaRepository;
+
+    @Inject
+    JsonWebToken jwt;
+
+    private Long empresaDoJwt() {
+        Long empresaId = jwt.getClaim("empresaId");
+        if (empresaId == null) {
+            throw new ForbiddenException("JWT sem empresaId");
+        }
+        return empresaId;
+    }
+
+    private void validarMesmoTenant(Evento evento) {
+        if (evento == null || evento.getEmpresa() == null
+                || !evento.getEmpresa().getId().equals(empresaDoJwt())) {
+            throw new ForbiddenException("Recurso pertence a outra empresa");
+        }
+    }
+
     @Transactional
     public Response insert(EventoDTO eventoDTO) {
         try {
@@ -35,6 +59,7 @@ public class EventoService {
             e.setLocal(eventoDTO.local());
             e.setInicioEvento(eventoDTO.inicioEvento());
             e.setFinalEvento(eventoDTO.finalEvento());
+            e.setEmpresa(empresaRepository.findById(empresaDoJwt()));
             List<EspacoEvento> espacoEventos = new ArrayList<>();
             e.setEspacoEventos(espacoEventos);
             repository.persist(e);
@@ -50,8 +75,10 @@ public class EventoService {
     public Response insertEspacoEvento(EspacoEventoDTO espacoEventoDTO) {
         try {
             Evento e = repository.findById(espacoEventoDTO.idEvento());
+            validarMesmoTenant(e);
             EspacoEvento espacoEvento = new EspacoEvento();
             espacoEvento.setNome(espacoEventoDTO.nome());
+            espacoEvento.setEmpresa(e.getEmpresa());
             espacoEventoRepository.persist(espacoEvento);
             e.getEspacoEventos().add(espacoEvento);
             return Response.ok(new EventoResponseDTO(e)).build();
@@ -76,11 +103,16 @@ public class EventoService {
 
     @Transactional
     public Evento update(Evento entity) {
+        Evento existente = repository.findById(entity.getId());
+        validarMesmoTenant(existente);
+        entity.setEmpresa(existente.getEmpresa());
         return repository.getEntityManager().merge(entity);
     }
 
     @Transactional
     public void deleteById(Long id) {
-        repository.findById(id).setAtivo(false);
+        Evento evento = repository.findById(id);
+        validarMesmoTenant(evento);
+        evento.setAtivo(false);
     }
 }

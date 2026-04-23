@@ -1,0 +1,62 @@
+-- V13: Workflow de pendências de acesso (atividade 031).
+--
+-- Pendencia é o registro canônico de um PENDENTE emitido por AcessoService
+-- (três cenários: DADOS_PESSOAIS_INCOMPLETOS, ROSTO_DIVERGENTE,
+-- FRIGATE_INDISPONIVEL). É criada pelo observer de PendenciaRequerida em
+-- ka.mdo.pendencia.PendenciaService, que dispara notificação via
+-- NotificacaoService para gestores do tenant.
+--
+-- Relacionamentos:
+--   - empresa_id    NOT NULL  => multitenancy (filtro Hibernate tenantFilter).
+--   - credencial_id NOT NULL  => o Ingresso que gerou a pendência.
+--   - local_id      NULL      => aparelhos de entrada geral do evento operam
+--                                sem EspacoEvento específico.
+--   - aparelho_id   NOT NULL  => toda leitura parte de um aparelho real.
+--   - resolvida_por_id NULL   => preenchido só após aprovar/recusar.
+--
+-- Decisões:
+--   - status VARCHAR(20) persistido como STRING do enum StatusPendencia;
+--     default ABERTA na aplicação (a coluna tem DEFAULT 'ABERTA' para
+--     robustez de inserts manuais em produção).
+--   - motivo VARCHAR(100): mesmo vocabulário de LogAcesso.motivo (códigos
+--     curtos e estáveis como ROSTO_DIVERGENTE, DADOS_PESSOAIS_INCOMPLETOS).
+--   - fotoCapturadaObjectKey: chave no bucket capturas-acesso. NULL é válido
+--     (cenário DADOS_PESSOAIS_INCOMPLETOS não tem foto).
+--   - observacaoResolucao VARCHAR(500): texto livre que o gestor pode deixar
+--     ao aprovar/recusar (útil para auditoria: "RG físico apresentado").
+
+CREATE TABLE Pendencia (
+    id                     BIGINT        NOT NULL AUTO_INCREMENT,
+    dataInclusao           TIMESTAMP     NULL,
+    ativo                  BOOLEAN       NOT NULL DEFAULT TRUE,
+    empresa_id             BIGINT        NOT NULL,
+    credencial_id          BIGINT        NOT NULL,
+    local_id               BIGINT        NULL,
+    aparelho_id            BIGINT        NOT NULL,
+    motivo                 VARCHAR(100)  NOT NULL,
+    fotoCapturadaObjectKey VARCHAR(500)  NULL,
+    status                 VARCHAR(20)   NOT NULL DEFAULT 'ABERTA',
+    criadaEm               TIMESTAMP     NOT NULL,
+    resolvidaEm            TIMESTAMP     NULL,
+    resolvida_por_id       BIGINT        NULL,
+    observacaoResolucao    VARCHAR(500)  NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_pendencia_empresa
+        FOREIGN KEY (empresa_id)       REFERENCES Empresa (id),
+    CONSTRAINT fk_pendencia_credencial
+        FOREIGN KEY (credencial_id)    REFERENCES Ingresso (id),
+    CONSTRAINT fk_pendencia_local
+        FOREIGN KEY (local_id)         REFERENCES EspacoEvento (id),
+    CONSTRAINT fk_pendencia_aparelho
+        FOREIGN KEY (aparelho_id)      REFERENCES Aparelho (id),
+    CONSTRAINT fk_pendencia_resolvida_por
+        FOREIGN KEY (resolvida_por_id) REFERENCES Usuario (id)
+);
+
+-- Índices do enunciado:
+--   (empresa_id, status, criadaEm DESC) — fila do gestor ordenada por tempo.
+--   (credencial_id, status) — idempotência (findAbertaPorMotivo) + histórico.
+CREATE INDEX idx_pendencia_empresa_status_data
+    ON Pendencia (empresa_id, status, criadaEm);
+CREATE INDEX idx_pendencia_credencial_status
+    ON Pendencia (credencial_id, status);

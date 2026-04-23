@@ -15,10 +15,14 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/auth")
+@Path("/api/v1/auth")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
+@Tag(name = "Autenticação", description = "Login e emissão de token JWT")
 public class AuthResource {
 
     @Inject
@@ -34,6 +38,9 @@ public class AuthResource {
     @PermitAll
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
+    @Operation(summary = "Autentica um usuário e retorna o token JWT")
+    @APIResponse(responseCode = "200", description = "Login bem-sucedido; token no header Authorization")
+    @APIResponse(responseCode = "204", description = "Usuário não encontrado ou credenciais inválidas")
     public Response login(AuthUsuarioDTO authDTO) {
 
         Usuario usuario = usuarioService.byLoginAndSenha(authDTO);

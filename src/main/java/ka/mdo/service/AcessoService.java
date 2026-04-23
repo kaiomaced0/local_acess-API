@@ -1,0 +1,536 @@
+package ka.mdo.service;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.ForbiddenException;
+import ka.mdo.dto.ValidarAcessoRequestDTO;
+import ka.mdo.dto.ValidarAcessoResponseDTO;
+import ka.mdo.facial.FacialValidationService;
+import ka.mdo.facial.PendenciaRequerida;
+import ka.mdo.facial.ResultadoFacial;
+import ka.mdo.facial.ResultadoFacialContexto;
+import ka.mdo.model.Aparelho;
+import ka.mdo.model.DadosPessoais;
+import ka.mdo.model.EscopoGlobal;
+import ka.mdo.model.EspacoEvento;
+import ka.mdo.model.Evento;
+import ka.mdo.model.Ingresso;
+import ka.mdo.model.ResultadoAcesso;
+import ka.mdo.model.TipoMovimento;
+import ka.mdo.model.Usuario;
+import ka.mdo.repository.AparelhoRepository;
+import ka.mdo.repository.EspacoEventoRepository;
+import ka.mdo.repository.IngressoRepository;
+import ka.mdo.repository.UsuarioRepository;
+import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.jboss.logging.Logger;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+/**
+ * Orquestra a decisão de liberar ou bloquear um acesso quando um
+ * {@link Aparelho} lê o QR de uma credencial.
+ *
+ * <p>Ganchos de evolução:
+ * <ul>
+ *     <li><b>Atividade 020</b> — implementado: quando {@code Evento.exigeDadosPessoais}
+ *     está ligado, credenciais cujo dono não tem {@link DadosPessoais} completos
+ *     retornam {@link ResultadoAcesso#PENDENTE} com motivo
+ *     {@code DADOS_PESSOAIS_INCOMPLETOS}.</li>
+ *     <li><b>Atividade 021</b> — implementado: quando {@code Evento.validarFacial}
+ *     está ligado, o aparelho precisa enviar a foto capturada via
+ *     {@link #validarComFoto(ValidarAcessoRequestDTO, byte[], String)}. Sem
+ *     foto ⇒ {@code PENDENTE FOTO_FACIAL_AUSENTE}. Divergência ⇒ {@code PENDENTE
+ *     ROSTO_DIVERGENTE}. O fluxo clássico {@link #validar(ValidarAcessoRequestDTO)}
+ *     continua funcionando para eventos sem {@code validarFacial}.</li>
+ *     <li><b>Atividade 030</b> — implementado: cada {@link EspacoEvento}
+ *     carrega uma whitelist N:N de {@link ka.mdo.model.TipoIngresso}
+ *     autorizados. Política: whitelist vazia = sem restrição (autoriza).
+ *     Whitelist não vazia = exige que {@code ingresso.tipoIngresso} esteja
+ *     listado, senão {@code NEGADO PERFIL_NAO_AUTORIZADO_NO_LOCAL}. Sem
+ *     cache: lê do banco a cada validação (otimização fica para 041).</li>
+ *     <li><b>Atividade 033</b> — implementado: {@link Ingresso#getEscopoGlobal()}
+ *     permite emitir credenciais que curto-circuitam parte das validações.
+ *     <ul>
+ *         <li>{@link EscopoGlobal#SUPER}: pula TODAS as checagens
+ *         (tenant da credencial, período, local, perfil, dados pessoais,
+ *         facial). É cross-tenant — busca o ingresso desabilitando o
+ *         {@code tenantFilter} via
+ *         {@link ka.mdo.repository.IngressoRepository#findByTokenCrossTenant}.</li>
+ *         <li>{@link EscopoGlobal#EMPRESA}: mantém tenant (aparelho vs
+ *         credencial), período, dados pessoais e facial. Pula apenas a
+ *         whitelist de {@code TipoIngresso} por local (perfil).</li>
+ *     </ul>
+ *     Toda decisão originada por credencial global é marcada no
+ *     {@code LogAcesso} com {@code acessoGlobal=true} para auditoria
+ *     destacada. Emissão gated em
+ *     {@code IngressoService#adicionarIngresso}.</li>
+ * </ul>
+ *
+ * <p>Auditoria: cada decisão dispara um {@link AcessoOcorrido} assíncrono
+ * (via CDI {@code Event#fireAsync}) consumido por
+ * {@link LogAcessoService#registrar(AcessoOcorrido)} em transação própria.
+ * Falhas na gravação do log nunca bloqueiam a resposta ao aparelho.
+ */
+@ApplicationScoped
+public class AcessoService {
+
+    private static final Logger LOG = Logger.getLogger(AcessoService.class);
+
+    // Motivos (códigos curtos, estáveis — o aparelho pode exibir traduções).
+    static final String MOTIVO_OK = "AUTORIZADO";
+    static final String MOTIVO_APARELHO_INEXISTENTE = "APARELHO_INEXISTENTE";
+    static final String MOTIVO_APARELHO_INATIVO = "APARELHO_INATIVO";
+    static final String MOTIVO_CREDENCIAL_INEXISTENTE = "CREDENCIAL_INEXISTENTE";
+    static final String MOTIVO_EVENTO_FORA_DO_PERIODO = "EVENTO_FORA_DO_PERIODO";
+    static final String MOTIVO_EVENTO_INEXISTENTE = "EVENTO_INEXISTENTE";
+    static final String MOTIVO_LOCAL_INEXISTENTE = "LOCAL_INEXISTENTE";
+    static final String MOTIVO_LOCAL_DE_OUTRO_EVENTO = "LOCAL_DE_OUTRO_EVENTO";
+    /** Atividade 030: TipoIngresso da credencial não está na whitelist do local. */
+    static final String MOTIVO_PERFIL_NAO_AUTORIZADO_NO_LOCAL = "PERFIL_NAO_AUTORIZADO_NO_LOCAL";
+    /** Atividade 020: evento exige dados pessoais e o dono não preencheu. */
+    static final String MOTIVO_DADOS_PESSOAIS_INCOMPLETOS = "DADOS_PESSOAIS_INCOMPLETOS";
+    /** Atividade 021: evento exige validação facial e o aparelho não enviou foto. */
+    static final String MOTIVO_FOTO_FACIAL_AUSENTE = "FOTO_FACIAL_AUSENTE";
+
+    @Inject
+    AparelhoRepository aparelhoRepository;
+
+    @Inject
+    IngressoRepository ingressoRepository;
+
+    @Inject
+    EspacoEventoRepository espacoEventoRepository;
+
+    @Inject
+    UsuarioRepository usuarioRepository;
+
+    @Inject
+    FacialValidationService facialValidationService;
+
+    @Inject
+    JsonWebToken jwt;
+
+    /**
+     * Canal CDI para disparar {@link AcessoOcorrido} de forma assíncrona.
+     * Consumido por {@link LogAcessoService#registrar(AcessoOcorrido)} com
+     * {@code @ObservesAsync} + {@code @Transactional(REQUIRES_NEW)}. Falha no
+     * listener NUNCA bloqueia o happy path — apenas vira log.error interno.
+     */
+    @Inject
+    Event<AcessoOcorrido> acessoOcorridoEvent;
+
+    /**
+     * Atividade 031: disparo assíncrono de {@link PendenciaRequerida} para
+     * TODOS os cenários que resultam em {@link ResultadoAcesso#PENDENTE}.
+     * Observado por {@code ka.mdo.pendencia.PendenciaService#aoRequererPendencia}.
+     *
+     * <p>O {@code FacialValidationService} também dispara este evento para os
+     * cenários faciais (ROSTO_DIVERGENTE, FRIGATE_INDISPONIVEL) — aqui cobrimos
+     * DADOS_PESSOAIS_INCOMPLETOS e FOTO_FACIAL_AUSENTE que o facial não veria.
+     * A idempotência no {@code PendenciaService} garante que eventos duplicados
+     * do mesmo (credencial, motivo) não duplicam registros nem notificações.
+     */
+    @Inject
+    Event<PendenciaRequerida> pendenciaRequeridaEvent;
+
+    private Long empresaDoJwt() {
+        Long empresaId = jwt.getClaim("empresaId");
+        if (empresaId == null) {
+            throw new ForbiddenException("JWT sem empresaId");
+        }
+        return empresaId;
+    }
+
+    /**
+     * Valida uma leitura de credencial feita por um aparelho sem foto.
+     *
+     * <p>Eventos com {@code validarFacial=true} devolvem {@code PENDENTE
+     * FOTO_FACIAL_AUSENTE} — o aparelho deve refazer a chamada via
+     * {@link #validarComFoto(ValidarAcessoRequestDTO, byte[], String)}. Eventos
+     * sem a flag seguem o fluxo clássico 011+020.
+     *
+     * @param req  payload do aparelho (token + contexto).
+     * @return decisão com resultado, motivo e id da credencial (quando encontrada).
+     */
+    public ValidarAcessoResponseDTO validar(ValidarAcessoRequestDTO req) {
+        return executarValidacao(req, null, null);
+    }
+
+    /**
+     * Variante com foto para eventos que exigem validação facial (atividade
+     * 021). Eventos sem a flag ignoram a foto e seguem o fluxo clássico.
+     *
+     * @param req            payload do aparelho.
+     * @param fotoCapturada  bytes da imagem capturada pelo aparelho (JPEG/PNG).
+     * @param contentType    MIME real (ex: {@code image/jpeg}).
+     * @return decisão final, incluindo flag {@code exigeValidacaoFacial}.
+     */
+    public ValidarAcessoResponseDTO validarComFoto(ValidarAcessoRequestDTO req,
+                                                   byte[] fotoCapturada,
+                                                   String contentType) {
+        return executarValidacao(req, fotoCapturada, contentType);
+    }
+
+    private ValidarAcessoResponseDTO executarValidacao(ValidarAcessoRequestDTO req,
+                                                       byte[] fotoCapturada,
+                                                       String contentType) {
+        Long empresaJwt = empresaDoJwt();
+        // Atividade 041: tipoMovimento é opcional no DTO — default ENTRADA.
+        TipoMovimento tipoMovimento = req.tipoMovimentoOuDefault();
+
+        // 1) Aparelho existe?
+        Aparelho aparelho = aparelhoRepository.findById(req.aparelhoId());
+        if (aparelho == null) {
+            // Sem aparelho não há como gravar LogAcesso (aparelho_id é NOT NULL).
+            // Registramos apenas o WARN de aplicação — a auditoria só existe para
+            // decisões feitas sobre aparelhos reais.
+            LOG.warnf("Validação de acesso rejeitada: aparelho %d inexistente", req.aparelhoId());
+            return new ValidarAcessoResponseDTO(
+                    ResultadoAcesso.NEGADO, MOTIVO_APARELHO_INEXISTENTE, null, false);
+        }
+
+        // 2) Aparelho pertence à mesma empresa do chamador? Sem isso, um
+        // operador de um tenant poderia validar credenciais cruzando tenants
+        // via aparelhoId arbitrário.
+        if (aparelho.getEmpresa() == null
+                || !aparelho.getEmpresa().getId().equals(empresaJwt)) {
+            throw new ForbiddenException("Aparelho pertence a outra empresa");
+        }
+
+        if (Boolean.FALSE.equals(aparelho.getAtivo())) {
+            LOG.warnf("Validação de acesso rejeitada: aparelho %d inativo", aparelho.getId());
+            return negar(aparelho, null, req.localId(), MOTIVO_APARELHO_INATIVO, null, false, tipoMovimento);
+        }
+
+        // 3) Credencial pelo token. O filtro Hibernate por tenant já limita a
+        // busca à empresa do JWT — token de outro tenant retorna Optional.empty.
+        // Não logamos o token bruto (apenas o ingresso.id quando achado).
+        Optional<Ingresso> ingressoOpt = ingressoRepository.findByToken(req.token());
+        if (ingressoOpt.isEmpty()) {
+            // Atividade 033: credenciais globais SUPER são cross-tenant.
+            // Tentamos buscar sem filtro; se encontrarmos um ingresso com
+            // escopoGlobal=SUPER, seguimos. Qualquer outro caso continua
+            // como CREDENCIAL_INEXISTENTE (não vazamos entre tenants).
+            Optional<Ingresso> crossTenant = ingressoRepository.findByTokenCrossTenant(req.token());
+            if (crossTenant.isPresent()
+                    && crossTenant.get().getEscopoGlobal() == EscopoGlobal.SUPER) {
+                ingressoOpt = crossTenant;
+            } else {
+                LOG.warn("Validação de acesso rejeitada: credencial inexistente (token não logado)");
+                return negar(aparelho, null, req.localId(), MOTIVO_CREDENCIAL_INEXISTENTE, null, false, tipoMovimento);
+            }
+        }
+        Ingresso ingresso = ingressoOpt.get();
+
+        // Atividade 033: curto-circuito para credenciais globais.
+        // SUPER: pula TODAS as checagens (tenant da credencial, período,
+        //        local, perfil, dados pessoais, facial). Autoriza direto.
+        // EMPRESA: mantém tenant (aparelho.empresa == ingresso.empresa),
+        //        período do evento, dados pessoais e facial; apenas pula
+        //        verificação de local/perfil (TipoIngresso).
+        EscopoGlobal escopoGlobal = ingresso.getEscopoGlobal();
+        if (escopoGlobal == EscopoGlobal.SUPER) {
+            LOG.infof("Acesso AUTORIZADO (global SUPER) aparelho=%d ingresso=%d local=%s",
+                    aparelho.getId(), ingresso.getId(),
+                    req.localId() == null ? "entrada-evento" : req.localId().toString());
+            dispararLog(aparelho, ingresso.getId(), req.localId(),
+                    ResultadoAcesso.AUTORIZADO, MOTIVO_OK, null, true, tipoMovimento);
+            return new ValidarAcessoResponseDTO(
+                    ResultadoAcesso.AUTORIZADO, MOTIVO_OK, ingresso.getId(), false);
+        }
+
+        if (escopoGlobal == EscopoGlobal.EMPRESA) {
+            // Tenant explícito (SUPER cross-tenant já retornou acima).
+            if (ingresso.getEmpresa() == null
+                    || !ingresso.getEmpresa().getId().equals(aparelho.getEmpresa().getId())) {
+                LOG.warn("Validação de acesso rejeitada: credencial global EMPRESA de outro tenant");
+                return negar(aparelho, ingresso.getId(), req.localId(),
+                        MOTIVO_CREDENCIAL_INEXISTENTE, null, false, tipoMovimento);
+            }
+        }
+
+        // 4) Período do evento.
+        Evento eventoContexto = resolverEventoContexto(req, aparelho);
+        if (eventoContexto != null && foraDoPeriodo(eventoContexto)) {
+            LOG.warnf("Validação de acesso rejeitada: evento %d fora do período (ingresso=%d)",
+                    eventoContexto.getId(), ingresso.getId());
+            return negar(aparelho, ingresso.getId(), req.localId(),
+                    MOTIVO_EVENTO_FORA_DO_PERIODO, null, escopoGlobal != null, tipoMovimento);
+        }
+
+        // 5) Autorização por local, quando aplicável.
+        // Credenciais global=EMPRESA pulam a checagem de perfil/autorização
+        // por TipoIngresso no local (mas mantêm as checagens de existência
+        // e vínculo local↔evento — são invariantes de integridade).
+        if (req.localId() != null) {
+            EspacoEvento local = espacoEventoRepository.findById(req.localId());
+            if (local == null) {
+                LOG.warnf("Validação de acesso rejeitada: local %d inexistente (ingresso=%d)",
+                        req.localId(), ingresso.getId());
+                return negar(aparelho, ingresso.getId(), null,
+                        MOTIVO_LOCAL_INEXISTENTE, null, escopoGlobal != null, tipoMovimento);
+            }
+            if (eventoContexto != null && !localPertenceAoEvento(local, eventoContexto)) {
+                LOG.warnf("Validação de acesso rejeitada: local %d não pertence ao evento %d",
+                        local.getId(), eventoContexto.getId());
+                return negar(aparelho, ingresso.getId(), local.getId(),
+                        MOTIVO_LOCAL_DE_OUTRO_EVENTO, null, escopoGlobal != null, tipoMovimento);
+            }
+
+            if (escopoGlobal != EscopoGlobal.EMPRESA) {
+                // Whitelist de TipoIngresso por EspacoEvento (atividade 030).
+                // Política: lista vazia = "sem restrição" (autoriza). Escolhemos
+                // permissivo para não bloquear gestores que esqueceram de
+                // configurar — a configuração é opt-in. Sem cache: lê direto do
+                // banco a cada validação (otimização fica para a 041).
+                long totalAutorizados = espacoEventoRepository.contarTiposAutorizados(local.getId());
+                if (totalAutorizados > 0) {
+                    Long tipoIngressoId = ingresso.getTipoIngresso() == null
+                            ? null : ingresso.getTipoIngresso().getId();
+                    if (tipoIngressoId == null
+                            || !espacoEventoRepository.contemTipoAutorizado(
+                                    local.getId(), tipoIngressoId)) {
+                        LOG.warnf("Validação de acesso rejeitada: perfil (tipoIngresso=%s) "
+                                        + "não autorizado no local %d (ingresso=%d)",
+                                tipoIngressoId, local.getId(), ingresso.getId());
+                        return negar(aparelho, ingresso.getId(), local.getId(),
+                                MOTIVO_PERFIL_NAO_AUTORIZADO_NO_LOCAL, null, false, tipoMovimento);
+                    }
+                }
+            }
+        }
+
+        boolean acessoGlobal = escopoGlobal != null; // somente EMPRESA chega aqui (SUPER já retornou).
+
+        // 6) Dados pessoais (atividade 020).
+        if (eventoContexto != null && eventoContexto.isExigeDadosPessoais()) {
+            Usuario dono = usuarioRepository.findByIngressoId(ingresso.getId());
+            DadosPessoais dp = dono == null ? null : dono.getDadosPessoais();
+            if (dp == null || !dp.isCompleto()) {
+                LOG.warnf("Acesso PENDENTE: dados pessoais incompletos (ingresso=%d evento=%d)",
+                        ingresso.getId(), eventoContexto.getId());
+                dispararLog(aparelho, ingresso.getId(), req.localId(),
+                        ResultadoAcesso.PENDENTE, MOTIVO_DADOS_PESSOAIS_INCOMPLETOS, null, acessoGlobal, tipoMovimento);
+                // Atividade 031: também dispara pendência (sem foto — não há
+                // captura nesse caminho).
+                dispararPendencia(aparelho, ingresso.getId(), req.localId(),
+                        MOTIVO_DADOS_PESSOAIS_INCOMPLETOS, null);
+                return new ValidarAcessoResponseDTO(
+                        ResultadoAcesso.PENDENTE,
+                        MOTIVO_DADOS_PESSOAIS_INCOMPLETOS,
+                        ingresso.getId(),
+                        eventoContexto.isValidarFacial());
+            }
+        }
+
+        // 7) Validação facial (atividade 021).
+        boolean exigeValidacaoFacial = eventoContexto != null && eventoContexto.isValidarFacial();
+        if (exigeValidacaoFacial) {
+            if (fotoCapturada == null || fotoCapturada.length == 0) {
+                LOG.warnf("Acesso PENDENTE: foto facial ausente (ingresso=%d evento=%d)",
+                        ingresso.getId(), eventoContexto.getId());
+                dispararLog(aparelho, ingresso.getId(), req.localId(),
+                        ResultadoAcesso.PENDENTE, MOTIVO_FOTO_FACIAL_AUSENTE, null, acessoGlobal, tipoMovimento);
+                // Atividade 031: também dispara pendência sem foto.
+                dispararPendencia(aparelho, ingresso.getId(), req.localId(),
+                        MOTIVO_FOTO_FACIAL_AUSENTE, null);
+                return new ValidarAcessoResponseDTO(
+                        ResultadoAcesso.PENDENTE,
+                        MOTIVO_FOTO_FACIAL_AUSENTE,
+                        ingresso.getId(),
+                        true);
+            }
+
+            ResultadoFacialContexto fac = facialValidationService.validar(
+                    ingresso.getId(), fotoCapturada, contentType,
+                    aparelho.getId(), req.localId());
+
+            switch (fac.resultado()) {
+                case AUTORIZADO:
+                case CADASTRADO:
+                    // segue fluxo normal abaixo (MOTIVO_OK).
+                    break;
+                case DIVERGENTE: {
+                    String motivo = fac.motivoPublico() != null
+                            ? fac.motivoPublico()
+                            : FacialValidationService.MOTIVO_ROSTO_DIVERGENTE;
+                    LOG.warnf("Acesso PENDENTE: facial divergente (ingresso=%d score=%.2f)",
+                            ingresso.getId(), fac.score());
+                    dispararLog(aparelho, ingresso.getId(), req.localId(),
+                            ResultadoAcesso.PENDENTE, motivo, fac.capturaObjectKey(), acessoGlobal, tipoMovimento);
+                    return new ValidarAcessoResponseDTO(
+                            ResultadoAcesso.PENDENTE, motivo, ingresso.getId(), true);
+                }
+                case INDISPONIVEL: {
+                    // Fallback "pendente": devolve PENDENTE para o aparelho.
+                    // As políticas "permitir" e "negar" já são resolvidas
+                    // dentro do FacialValidationService (não chegam aqui como
+                    // INDISPONIVEL).
+                    String motivo = fac.motivoPublico() != null
+                            ? fac.motivoPublico()
+                            : FacialValidationService.MOTIVO_FRIGATE_INDISPONIVEL;
+                    LOG.warnf("Acesso PENDENTE: Frigate indisponível (ingresso=%d)",
+                            ingresso.getId());
+                    dispararLog(aparelho, ingresso.getId(), req.localId(),
+                            ResultadoAcesso.PENDENTE, motivo, fac.capturaObjectKey(), acessoGlobal, tipoMovimento);
+                    return new ValidarAcessoResponseDTO(
+                            ResultadoAcesso.PENDENTE, motivo, ingresso.getId(), true);
+                }
+            }
+
+            LOG.infof("Acesso AUTORIZADO (facial) aparelho=%d ingresso=%d local=%s score=%.2f global=%s",
+                    aparelho.getId(), ingresso.getId(),
+                    req.localId() == null ? "entrada-evento" : req.localId().toString(),
+                    fac.score(), acessoGlobal);
+            dispararLog(aparelho, ingresso.getId(), req.localId(),
+                    ResultadoAcesso.AUTORIZADO, MOTIVO_OK, fac.capturaObjectKey(), acessoGlobal, tipoMovimento);
+            return new ValidarAcessoResponseDTO(
+                    ResultadoAcesso.AUTORIZADO,
+                    MOTIVO_OK,
+                    ingresso.getId(),
+                    true);
+        }
+
+        LOG.infof("Acesso AUTORIZADO aparelho=%d ingresso=%d local=%s global=%s",
+                aparelho.getId(), ingresso.getId(),
+                req.localId() == null ? "entrada-evento" : req.localId().toString(),
+                acessoGlobal);
+
+        // Auditoria assíncrona: não bloqueia a resposta. Ver LogAcessoService#registrar.
+        dispararLog(aparelho, ingresso.getId(), req.localId(),
+                ResultadoAcesso.AUTORIZADO, MOTIVO_OK, null, acessoGlobal, tipoMovimento);
+
+        return new ValidarAcessoResponseDTO(
+                ResultadoAcesso.AUTORIZADO,
+                MOTIVO_OK,
+                ingresso.getId(),
+                exigeValidacaoFacial
+        );
+    }
+
+    /**
+     * Caminho comum para respostas {@code NEGADO}: monta o DTO e dispara o
+     * evento de auditoria.
+     *
+     * @param acessoGlobal (033) marca o log como oriundo de uma credencial
+     *                     global — destaque para auditoria mesmo em casos
+     *                     de negação (ex.: credencial SUPER com token mas
+     *                     em contexto que ainda assim é negado).
+     */
+    private ValidarAcessoResponseDTO negar(Aparelho aparelho,
+                                           Long credencialId,
+                                           Long localId,
+                                           String motivo,
+                                           String fotoObjectKey,
+                                           boolean acessoGlobal,
+                                           TipoMovimento tipoMovimento) {
+        dispararLog(aparelho, credencialId, localId, ResultadoAcesso.NEGADO,
+                motivo, fotoObjectKey, acessoGlobal, tipoMovimento);
+        return new ValidarAcessoResponseDTO(
+                ResultadoAcesso.NEGADO,
+                motivo,
+                credencialId,
+                false
+        );
+    }
+
+    /**
+     * Dispara o evento de auditoria de forma assíncrona. Nunca propaga
+     * exceções — falha no fire NÃO pode bloquear a resposta ao aparelho.
+     * O handler em si roda em outra thread/transação; falhas no handler já
+     * são tratadas em {@link LogAcessoService#registrar(AcessoOcorrido)}.
+     */
+    private void dispararLog(Aparelho aparelho,
+                             Long ingressoId,
+                             Long localId,
+                             ResultadoAcesso resultado,
+                             String motivo,
+                             String fotoCapturadaObjectKey,
+                             boolean acessoGlobal,
+                             TipoMovimento tipoMovimento) {
+        try {
+            AcessoOcorrido evt = new AcessoOcorrido(
+                    aparelho.getEmpresa().getId(),
+                    aparelho.getId(),
+                    ingressoId,
+                    localId,
+                    resultado,
+                    motivo,
+                    LocalDateTime.now(),
+                    fotoCapturadaObjectKey,
+                    acessoGlobal,
+                    tipoMovimento == null ? TipoMovimento.ENTRADA : tipoMovimento
+            );
+            acessoOcorridoEvent.fireAsync(evt);
+        } catch (RuntimeException e) {
+            LOG.errorf(e, "Falha ao disparar evento de auditoria (resultado=%s motivo=%s)",
+                    resultado, motivo);
+        }
+    }
+
+    /**
+     * Determina o {@link Evento} a ser usado para validar o período.
+     */
+    private Evento resolverEventoContexto(ValidarAcessoRequestDTO req, Aparelho aparelho) {
+        if (aparelho.getEvento() != null) {
+            return aparelho.getEvento();
+        }
+        // TODO 030: fallback via EspacoEvento quando ganhar FK para Evento.
+        return null;
+    }
+
+    private boolean foraDoPeriodo(Evento evento) {
+        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime inicio = evento.getInicioEvento();
+        LocalDateTime fim = evento.getFinalEvento();
+        if (inicio != null && agora.isBefore(inicio)) {
+            return true;
+        }
+        if (fim != null && agora.isAfter(fim)) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean localPertenceAoEvento(EspacoEvento local, Evento evento) {
+        if (evento.getEspacoEventos() == null) {
+            return true;
+        }
+        return evento.getEspacoEventos().stream()
+                .anyMatch(e -> e.getId().equals(local.getId()));
+    }
+
+    /**
+     * Dispara {@link PendenciaRequerida} para os cenários de {@code PENDENTE}
+     * detectados aqui (DADOS_PESSOAIS_INCOMPLETOS, FOTO_FACIAL_AUSENTE). Os
+     * cenários ROSTO_DIVERGENTE e FRIGATE_INDISPONIVEL são disparados pelo
+     * {@code FacialValidationService} (idempotência garante não duplicação).
+     *
+     * <p>Nunca propaga exceções — falha no fire não pode bloquear a resposta
+     * ao aparelho. O observer em {@code PendenciaService} já corre em
+     * transação própria.
+     */
+    private void dispararPendencia(Aparelho aparelho,
+                                   Long ingressoId,
+                                   Long localId,
+                                   String motivo,
+                                   String fotoCapturadaObjectKey) {
+        try {
+            Long empresaId = aparelho.getEmpresa() != null ? aparelho.getEmpresa().getId() : null;
+            pendenciaRequeridaEvent.fireAsync(new PendenciaRequerida(
+                    empresaId,
+                    ingressoId,
+                    aparelho.getId(),
+                    localId,
+                    fotoCapturadaObjectKey,
+                    motivo,
+                    0.0));
+        } catch (RuntimeException e) {
+            LOG.errorf(e, "Falha ao disparar PendenciaRequerida (ingresso=%d motivo=%s)",
+                    ingressoId, motivo);
+        }
+    }
+}

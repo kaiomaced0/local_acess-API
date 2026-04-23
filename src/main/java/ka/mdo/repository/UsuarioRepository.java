@@ -47,4 +47,17 @@ public class UsuarioRepository implements PanacheRepository<Usuario> {
 
         return find("email = ?1", email).firstResult();
     }
+
+    /**
+     * Retorna o usuário dono de um ingresso, navegando pela FK
+     * {@code usuario_ingresso} que liga {@code Ingresso} ao {@code Usuario}
+     * proprietário (relação unidirecional declarada em {@code Usuario.ingressos}).
+     */
+    public Usuario findByIngressoId(Long ingressoId) {
+        if (ingressoId == null)
+            return null;
+
+        return find("SELECT u FROM Usuario u JOIN u.ingressos i WHERE i.id = ?1", ingressoId)
+                .firstResult();
+    }
 }

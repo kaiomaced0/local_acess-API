@@ -1,40 +1,33 @@
 package ka.mdo.model;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
+/**
+ * Perfis formais do sistema. O nome do enum (`name()`) é usado como valor
+ * persistido em banco (via {@link jakarta.persistence.EnumType#STRING}) e
+ * também como nome do "group" emitido no JWT para uso com {@code @RolesAllowed}.
+ *
+ * Hierarquia conceitual:
+ *  - SUPER_ADMIN: administra a instância, cross-tenant (pode criar empresas).
+ *  - ADMIN_EMPRESA: administra uma empresa (tenant).
+ *  - GESTOR_EVENTO: gerencia eventos e espaços de sua empresa.
+ *  - GESTOR_LOCAL: gerencia locais/espaços de sua empresa.
+ *  - OPERADOR_APARELHO: opera dispositivos de validação (totens, leitores).
+ *  - CLIENTE: usuário final (comprador/portador de ingresso).
+ */
 public enum Perfil {
-    ADMIN(1, "Admin"),
-    USER(2, "User"),
-    MEDICO(3, "Medico");
+    SUPER_ADMIN("Super Admin"),
+    ADMIN_EMPRESA("Admin Empresa"),
+    GESTOR_EVENTO("Gestor Evento"),
+    GESTOR_LOCAL("Gestor Local"),
+    OPERADOR_APARELHO("Operador Aparelho"),
+    CLIENTE("Cliente");
 
-    private int id;
-    private String label;
+    private final String label;
 
-    Perfil(int id, String label) {
-        this.id = id;
+    Perfil(String label) {
         this.label = label;
-    }
-
-    public int getId() {
-        return id;
     }
 
     public String getLabel() {
         return label;
     }
-
-    public static Perfil valueOf(Integer id) throws IllegalArgumentException {
-        if (id == null)
-            return null;
-        for(Perfil perfil : Perfil.values()) {
-            if (id.equals(perfil.getId()))
-                return perfil;
-        }
-        throw new IllegalArgumentException("Id inválido:" + id);
-    }
-
-
-
 }
-
