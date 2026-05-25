@@ -105,6 +105,13 @@
       <artifactId>rest-assured</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Atividade 051: @InjectMock no teste de emissão de credencial
+         (IngressoService depende de JsonWebToken e não tem endpoint REST). -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit5-mockito</artifactId>
+      <scope>test</scope>
+    </dependency>
     <!-- Atividade 032: notificações (websocket + email). Push (FCM) fica stub. -->
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -113,11 +120,6 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-mailer</artifactId>
-    </dependency>
-    <!-- Atividade 021: cliente REST reativo p/ Frigate (validação facial). -->
-    <dependency>
-      <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-rest-client-reactive-jackson</artifactId>
     </dependency>
   </dependencies>
   <build>
@@ -153,6 +155,9 @@
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
+            <!-- Permite o bytecode enhancement do Hibernate (Byte Buddy) rodar em
+                 JDKs mais novos que o alvo do projeto (Java 17). No-op no JDK 17. -->
+            <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
           </systemPropertyVariables>
         </configuration>
       </plugin>

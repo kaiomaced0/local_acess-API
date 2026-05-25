@@ -54,7 +54,7 @@ public class FrigateServiceImpl implements FrigateService {
 
     private static final Logger LOG = Logger.getLogger(FrigateServiceImpl.class);
 
-    @ConfigProperty(name = "quarkus.rest-client.frigate.url", defaultValue = "http://localhost:5000")
+    @ConfigProperty(name = "frigate.url", defaultValue = "http://localhost:5000")
     String frigateUrl;
 
     @ConfigProperty(name = "frigate.timeout-connect-ms", defaultValue = "3000")
