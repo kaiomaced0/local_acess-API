@@ -24,7 +24,7 @@ class AuthLoginTest {
                 .contentType("application/json")
                 .body(Map.of("login", "admin@local-acess.local", "senha", "admin123"))
                 .when()
-                .post("/api/v1/auth")
+                .post("/auth")
                 .then()
                 .statusCode(200)
                 .header("Authorization", not(emptyOrNullString()));
@@ -36,7 +36,7 @@ class AuthLoginTest {
                 .contentType("application/json")
                 .body(Map.of("login", "admin@local-acess.local", "senha", "senha-errada"))
                 .when()
-                .post("/api/v1/auth")
+                .post("/auth")
                 .then()
                 .statusCode(204);
     }

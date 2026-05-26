@@ -31,7 +31,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
  * MIME no header; o service chama {@code StorageValidator.validarImagem}
  * antes de persistir.
  */
-@Path("/api/v1/dados-pessoais")
+@Path("/dados-pessoais")
 @Authenticated
 @Tag(name = "Dados Pessoais", description = "Dados pessoais e foto do dono da credencial")
 public class DadosPessoaisResource {

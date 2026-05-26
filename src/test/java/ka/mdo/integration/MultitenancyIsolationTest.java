@@ -46,7 +46,7 @@ class MultitenancyIsolationTest {
                 .contentType("application/json")
                 .body(req(tokenA, aparelhoA))
                 .when()
-                .post("/api/v1/acesso/validar")
+                .post("/acesso/validar")
                 .then()
                 .statusCode(200)
                 .body("resultado", equalTo("AUTORIZADO"));
@@ -57,7 +57,7 @@ class MultitenancyIsolationTest {
                 .contentType("application/json")
                 .body(req(tokenA, aparelhoB))
                 .when()
-                .post("/api/v1/acesso/validar")
+                .post("/acesso/validar")
                 .then()
                 .statusCode(200)
                 .body("resultado", equalTo("NEGADO"))

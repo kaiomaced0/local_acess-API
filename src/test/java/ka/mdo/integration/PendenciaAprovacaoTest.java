@@ -36,7 +36,7 @@ class PendenciaAprovacaoTest {
                 .contentType("application/json")
                 .body(Map.of("observacao", "Documento conferido presencialmente"))
                 .when()
-                .post("/api/v1/pendencias/{id}/aprovar", pendencia)
+                .post("/pendencias/{id}/aprovar", pendencia)
                 .then()
                 .statusCode(200)
                 .body("id", equalTo(pendencia.intValue()))

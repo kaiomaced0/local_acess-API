@@ -25,7 +25,7 @@ import java.util.Map;
  * perfil autenticado pode acessar — cada usuário só enxerga as próprias
  * notificações (service valida via subject do JWT).
  */
-@Path("/api/v1/notificacoes")
+@Path("/notificacoes")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Authenticated

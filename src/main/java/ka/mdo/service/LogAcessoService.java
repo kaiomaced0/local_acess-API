@@ -27,7 +27,7 @@ import java.util.List;
 
 /**
  * Persiste {@link LogAcesso} de forma assíncrona e responde às consultas de
- * auditoria ({@code GET /api/v1/logs-acesso}).
+ * auditoria ({@code GET /logs-acesso}).
  *
  * <p>Estratégia de gravação: CDI {@code @ObservesAsync} sobre
  * {@link AcessoOcorrido}. Disparado por {@code AcessoService#validar} via

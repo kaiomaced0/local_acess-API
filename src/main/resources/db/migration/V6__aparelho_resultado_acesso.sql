@@ -1,7 +1,7 @@
 -- V6: cria tabela Aparelho (atividade 011).
 --
 -- Um Aparelho é um dispositivo físico (totem/leitor/tablet) que opera sob
--- um perfil OPERADOR_APARELHO e consome POST /api/v1/acesso/validar para
+-- um perfil OPERADOR_APARELHO e consome POST /acesso/validar para
 -- decidir liberar ou bloquear acessos.
 --
 -- Multitenancy: empresa_id NOT NULL, mesmo padrão dos demais negócios.

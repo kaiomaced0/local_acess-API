@@ -1,0 +1,61 @@
+# Stack local da API local_acess.
+#
+# Por que docker em vez de rodar nativo: o filtro de loopback do Kaspersky desta
+# máquina impede o JDK NIO Selector (Netty/Vert.x) de iniciar. Dentro do
+# container o loopback é isolado e funciona normalmente. A porta 8080 é exposta
+# ao host para que o frontend nativo (rodando direto no Windows) consiga
+# consumir a API em http://localhost:8080.
+#
+# Como subir:
+#   1. ./mvnw -B -DskipTests package           # gera target/quarkus-app
+#   2. docker compose up --build -d
+#   3. docker compose logs -f api              # acompanhar o startup
+#   4. login de smoke test:
+#      curl -i -X POST http://localhost:8080/auth \
+#        -H "Content-Type: application/json" \
+#        -d '{"login":"admin@local-acess.local","senha":"admin123"}'
+#
+# Para parar tudo: docker compose down
+# Para zerar o banco também: docker compose down -v
+
+services:
+  mariadb:
+    image: mariadb:11.2
+    container_name: local_acess-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: "123456"
+      MARIADB_DATABASE: local_acessdb
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - mariadb-data:/var/lib/mysql
+
+  api:
+    build:
+      context: .
+      dockerfile: src/main/docker/Dockerfile.jvm
+    image: local_acess-api:latest
+    container_name: local_acess-api
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      # Em prod o Quarkus não tem datasource configurado — passamos por env
+      # (convenção: chave_em_caixa.alta_com_underline).
+      QUARKUS_DATASOURCE_DB_KIND: mariadb
+      QUARKUS_DATASOURCE_USERNAME: root
+      QUARKUS_DATASOURCE_PASSWORD: "123456"
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:mariadb://mariadb:3306/local_acessdb
+      # CORS aberto para o frontend local em qualquer porta.
+      QUARKUS_HTTP_CORS: "true"
+      QUARKUS_HTTP_CORS_ORIGINS: "/.*/"
+    ports:
+      - "8080:8080"
+
+volumes:
+  mariadb-data:

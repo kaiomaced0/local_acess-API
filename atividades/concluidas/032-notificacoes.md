@@ -39,7 +39,7 @@ Infraestrutura de notificações pronta para uso. Compilação OK
   já consolidado em `LogAcessoService` para `AcessoOcorrido`.
 - **Canais**: três beans `@ApplicationScoped` com `@ObservesAsync` em
   `NotificacaoCriada`:
-  - `WebsocketChannel` (`@ServerEndpoint("/api/v1/ws/notificacoes")`)
+  - `WebsocketChannel` (`@ServerEndpoint("/ws/notificacoes")`)
   - `EmailChannel` (usa `io.quarkus.mailer.Mailer`)
   - `PushChannel` (stub — apenas `LOG.info`)
   Cada listener roda em `REQUIRES_NEW` com try/catch que converte falha

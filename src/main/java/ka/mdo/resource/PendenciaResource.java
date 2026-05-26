@@ -1,5 +1,11 @@
 package ka.mdo.resource;
 
+import java.util.List;
+
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -16,11 +22,6 @@ import ka.mdo.dto.ResolucaoPendenciaDTO;
 import ka.mdo.model.Pendencia;
 import ka.mdo.model.StatusPendencia;
 import ka.mdo.pendencia.PendenciaService;
-import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-
-import java.util.List;
 
 /**
  * Endpoints do workflow de pendências (atividade 031). Usados pela fila do
@@ -30,7 +31,7 @@ import java.util.List;
  * do Hibernate isola por empresa automaticamente — nenhum parâmetro de
  * {@code empresaId} é aceito (o tenant vem do JWT).
  */
-@Path("/api/v1/pendencias")
+@Path("/pendencias")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"GESTOR_EVENTO", "GESTOR_LOCAL", "ADMIN_EMPRESA", "SUPER_ADMIN"})

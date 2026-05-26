@@ -3,7 +3,7 @@
 -- Registra cada decisão de validação tomada pelos aparelhos (AUTORIZADO /
 -- PENDENTE / NEGADO) para fins de auditoria, dashboards e resolução de
 -- disputas. Gravação é assíncrona (CDI ObservesAsync em LogAcessoService),
--- então a latência do endpoint POST /api/v1/acesso/validar não é afetada
+-- então a latência do endpoint POST /acesso/validar não é afetada
 -- por esta tabela.
 --
 -- Relacionamentos:

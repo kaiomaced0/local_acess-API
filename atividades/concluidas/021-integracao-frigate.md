@@ -65,7 +65,7 @@ Cliente REST para Frigate e fluxo de validação integrado ao `POST /acesso/vali
 - `src/main/java/ka/mdo/service/LogAcessoService.java` — persiste
   `fotoCapturadaUrl` a partir do evento (objectKey; URL assinada on-demand).
 - `src/main/java/ka/mdo/resource/AcessoResource.java` — novo endpoint
-  `POST /api/v1/acesso/validar-com-foto` (octet-stream body + query/header
+  `POST /acesso/validar-com-foto` (octet-stream body + query/header
   `X-Content-Type`). `/validar` preservado.
 - `src/main/resources/application.properties` — bloco `frigate.*` +
   `quarkus.rest-client.frigate.url`.
@@ -82,7 +82,7 @@ por compliance com o enunciado e fica disponível para futuras rotas que
 queiram usá-la (ex: listar rostos enrolados sem multipart).
 
 ### Como evitei breaking change no /validar
-Criei **endpoint novo** `POST /api/v1/acesso/validar-com-foto` em vez de
+Criei **endpoint novo** `POST /acesso/validar-com-foto` em vez de
 alterar o request do `/validar`. O `ValidarAcessoRequestDTO` não mudou —
 o fluxo existente continua verde byte-a-byte. Eventos com
 `validarFacial=true` chamados via `/validar` clássico recebem

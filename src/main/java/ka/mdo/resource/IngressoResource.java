@@ -15,7 +15,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/v1/ingressos")
+@Path("/ingressos")
 @Tag(name = "Ingressos", description = "Credenciais de acesso (QR Code)")
 public class IngressoResource {
 

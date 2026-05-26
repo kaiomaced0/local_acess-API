@@ -3,8 +3,8 @@ package ka.mdo.dto;
 import jakarta.validation.constraints.Size;
 
 /**
- * Body opcional dos endpoints {@code POST /api/v1/pendencias/{id}/aprovar} e
- * {@code POST /api/v1/pendencias/{id}/recusar} (atividade 031).
+ * Body opcional dos endpoints {@code POST /pendencias/{id}/aprovar} e
+ * {@code POST /pendencias/{id}/recusar} (atividade 031).
  *
  * <p>A observação é persistida em {@code Pendencia.observacaoResolucao} e fica
  * disponível no histórico — útil para auditoria (ex.: "cliente apresentou RG

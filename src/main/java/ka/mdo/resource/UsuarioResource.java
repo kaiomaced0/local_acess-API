@@ -1,23 +1,31 @@
 package ka.mdo.resource;
 
-import ka.mdo.dto.UsuarioDTO;
-import ka.mdo.dto.UsuarioResponseDTO;
-import ka.mdo.model.Usuario;
-import ka.mdo.service.UsuarioService;
-import jakarta.annotation.security.RolesAllowed;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import java.util.List;
+
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-import java.util.List;
+import jakarta.annotation.security.RolesAllowed;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import ka.mdo.dto.UsuarioDTO;
+import ka.mdo.dto.UsuarioResponseDTO;
+import ka.mdo.model.Usuario;
+import ka.mdo.service.UsuarioService;
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-@Path("/api/v1/usuarios")
+@Path("/usuarios")
 @RolesAllowed({"SUPER_ADMIN", "ADMIN_EMPRESA"})
 @Tag(name = "Usuários", description = "Gestão de usuários da empresa")
 public class UsuarioResource {
