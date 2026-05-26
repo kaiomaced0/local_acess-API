@@ -1,5 +1,6 @@
 package ka.mdo.service;
 
+import ka.mdo.tenant.JwtClaims;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -63,7 +64,7 @@ public class AutorizacaoEspacoService {
     JsonWebToken jwt;
 
     private Long empresaDoJwt() {
-        Long empresaId = jwt.getClaim("empresaId");
+        Long empresaId = JwtClaims.empresaIdOrNull(jwt);
         if (empresaId == null) {
             throw new ForbiddenException("JWT sem empresaId");
         }

@@ -1,5 +1,6 @@
 package ka.mdo.service;
 
+import ka.mdo.tenant.JwtClaims;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
@@ -236,7 +237,7 @@ public class MetricaService {
         if (eventoId == null) {
             throw new BadRequestException("eventoId obrigatório");
         }
-        Long empresaJwt = jwt.getClaim("empresaId");
+        Long empresaJwt = JwtClaims.empresaIdOrNull(jwt);
         if (empresaJwt == null && !isSuperAdmin()) {
             throw new ForbiddenException("JWT sem empresaId");
         }

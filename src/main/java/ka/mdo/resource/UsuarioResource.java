@@ -18,9 +18,11 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import ka.mdo.dto.IngressoDTO;
 import ka.mdo.dto.UsuarioDTO;
 import ka.mdo.dto.UsuarioResponseDTO;
 import ka.mdo.model.Usuario;
+import ka.mdo.service.IngressoService;
 import ka.mdo.service.UsuarioService;
 
 @Consumes(MediaType.APPLICATION_JSON)
@@ -31,6 +33,9 @@ import ka.mdo.service.UsuarioService;
 public class UsuarioResource {
     @Inject
     private UsuarioService service;
+
+    @Inject
+    IngressoService ingressoService;
 
 
     @GET
@@ -70,6 +75,18 @@ public class UsuarioResource {
     @APIResponse(responseCode = "404", description = "Usuário não encontrado")
     public Usuario update(@PathParam("id") Long id, Usuario entity) {
         return service.update(entity);
+    }
+
+    @POST
+    @Path("/{idUsuario}/ingressos")
+    @RolesAllowed({"SUPER_ADMIN", "ADMIN_EMPRESA", "GESTOR_EVENTO"})
+    @Operation(summary = "Emite uma credencial para o usuário (atividade 013)",
+            description = "Cria um Ingresso vinculado ao usuário do tenant, gera o token opaco (base do QR) e devolve o IngressoResponseDTO. Aceita o campo opcional escopoGlobal (atividade 033) com o gate de papel já aplicado no service.")
+    @APIResponse(responseCode = "201", description = "Credencial emitida")
+    @APIResponse(responseCode = "401", description = "Token ausente ou inválido")
+    @APIResponse(responseCode = "403", description = "Usuário/TipoIngresso de outro tenant, ou perfil sem direito de emitir credencial global")
+    public Response emitirIngresso(@PathParam("idUsuario") Long idUsuario, IngressoDTO dto) {
+        return ingressoService.adicionarIngresso(idUsuario, dto);
     }
 
     @PATCH

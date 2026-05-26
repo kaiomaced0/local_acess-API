@@ -1,5 +1,6 @@
 package ka.mdo.service;
 
+import ka.mdo.tenant.JwtClaims;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -52,7 +53,7 @@ public class TipoIngressoService {
     JsonWebToken jwt;
 
     private Long empresaDoJwt() {
-        Long empresaId = jwt.getClaim("empresaId");
+        Long empresaId = JwtClaims.empresaIdOrNull(jwt);
         if (empresaId == null) {
             throw new ForbiddenException("JWT sem empresaId");
         }
@@ -66,7 +67,7 @@ public class TipoIngressoService {
      * (com possibilidade de no-op se o JWT for SUPER_ADMIN sem empresaId).
      */
     private void validarMesmoTenant(TipoIngresso tipo) {
-        Long empresaId = jwt.getClaim("empresaId");
+        Long empresaId = JwtClaims.empresaIdOrNull(jwt);
         if (empresaId == null) {
             // SUPER_ADMIN sem empresaId — não filtra (cross-tenant permitido).
             return;

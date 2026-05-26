@@ -1,5 +1,6 @@
 package ka.mdo.service;
 
+import ka.mdo.tenant.JwtClaims;
 import ka.mdo.dto.*;
 import ka.mdo.model.Empresa;
 import ka.mdo.model.Perfil;
@@ -44,7 +45,7 @@ public class UsuarioService {
 
     private Long empresaDoJwtOpcional() {
         try {
-            return jwt.getClaim("empresaId");
+            return JwtClaims.empresaIdOrNull(jwt);
         } catch (Exception e) {
             return null;
         }
