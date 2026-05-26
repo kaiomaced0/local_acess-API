@@ -65,7 +65,9 @@ public class BootstrapService {
 
     @Transactional
     public void onStart(@Observes StartupEvent ev) {
-        long qtdSuper = usuarioRepository.find("SELECT COUNT(u) FROM Usuario u JOIN u.perfis p WHERE p = ?1", Perfil.SUPER_ADMIN).count();
+        // Panache count() não aceita SELECT COUNT explícito; usamos MEMBER OF
+        // sobre a coleção Perfil para perguntar "quantos Usuarios têm SUPER_ADMIN".
+        long qtdSuper = usuarioRepository.count("?1 MEMBER OF perfis", Perfil.SUPER_ADMIN);
         if (qtdSuper > 0) {
             Log.debug("Bootstrap: já existe SUPER_ADMIN, nada a fazer.");
             return;
