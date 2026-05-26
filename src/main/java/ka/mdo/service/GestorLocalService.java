@@ -1,5 +1,6 @@
 package ka.mdo.service;
 
+import ka.mdo.tenant.JwtClaims;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -56,7 +57,7 @@ public class GestorLocalService {
     JsonWebToken jwt;
 
     private Long empresaDoJwt() {
-        Long empresaId = jwt.getClaim("empresaId");
+        Long empresaId = JwtClaims.empresaIdOrNull(jwt);
         if (empresaId == null) {
             throw new ForbiddenException("JWT sem empresaId");
         }
@@ -116,7 +117,7 @@ public class GestorLocalService {
                 .orElseThrow(() -> new NotFoundException(
                         "Vínculo usuario=" + usuarioId + " local=" + localId + " não encontrado"));
         // tenantFilter já isolou; checagem adicional para clareza.
-        Long empresaJwt = jwt.getClaim("empresaId");
+        Long empresaJwt = JwtClaims.empresaIdOrNull(jwt);
         if (empresaJwt != null
                 && existente.getEmpresa() != null
                 && !Objects.equals(existente.getEmpresa().getId(), empresaJwt)) {

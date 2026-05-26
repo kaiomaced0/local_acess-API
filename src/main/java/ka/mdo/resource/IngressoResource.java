@@ -7,7 +7,6 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import ka.mdo.qrcode.QrCodeService;
 import ka.mdo.service.IngressoService;
@@ -15,7 +14,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/v1/ingressos")
+@Path("/ingressos")
 @Tag(name = "Ingressos", description = "Credenciais de acesso (QR Code)")
 public class IngressoResource {
 
@@ -57,4 +56,5 @@ public class IngressoResource {
                 .header("Cache-Control", "no-store")
                 .build();
     }
+
 }

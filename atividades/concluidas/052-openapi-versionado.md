@@ -11,10 +11,10 @@ epico: observabilidade
 O frontend (que será criado em breve) e o app dos aparelhos precisam de um contrato estável.
 
 ## Objetivo
-OpenAPI disponível e rotas prefixadas com `/api/v1`.
+OpenAPI disponível e rotas prefixadas com ``.
 
 ## Critérios de aceitação
-- [x] Todos os resources sob `@Path("/api/v1/...")`.
+- [x] Todos os resources sob `@Path("/...")`.
 - [x] `quarkus.smallrye-openapi.path=/openapi` e Swagger UI em `/swagger-ui` (dev).
 - [x] Anotações `@Operation`, `@APIResponse` e `@Tag` nos endpoints principais.
 - [ ] Contrato exportado e commitado em `docs/openapi.yaml` via `mvn` goal ou CI.
@@ -27,12 +27,12 @@ OpenAPI disponível e rotas prefixadas com `/api/v1`.
 ## Resultado
 
 ### Resumo
-- Todos os `@Path` de resources passaram a ser prefixados com `/api/v1`:
-  - `AuthResource`: `/auth` → `/api/v1/auth`
-  - `EmpresaResource`: `/empresas` → `/api/v1/empresas`
-  - `EventoResource`: `/evento` → `/api/v1/eventos`
-  - `UsuarioResource`: `/usuario` → `/api/v1/usuarios`
-  - `UsuarioLogadoResource`: `/usuariologado` → `/api/v1/usuario-logado`
+- Todos os `@Path` de resources passaram a ser prefixados com ``:
+  - `AuthResource`: `/auth` → `/auth`
+  - `EmpresaResource`: `/empresas` → `/empresas`
+  - `EventoResource`: `/evento` → `/eventos`
+  - `UsuarioResource`: `/usuario` → `/usuarios`
+  - `UsuarioLogadoResource`: `/usuariologado` → `/usuario-logado`
 - Adicionadas anotações OpenAPI (`@Tag` na classe, `@Operation` e múltiplos
   `@APIResponse` por método) em todos os endpoints públicos dos 5 resources.
 - Configurado OpenAPI (`/openapi`) e Swagger UI em dev (`/swagger-ui`) em

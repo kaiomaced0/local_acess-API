@@ -68,7 +68,7 @@ Todas as respostas `NEGADO`/`PENDENTE` tomadas em cima de um `Ingresso` global p
 - ✅ Emissão gated: `SUPER` → só `SUPER_ADMIN`; `EMPRESA` → `ADMIN_EMPRESA`/`SUPER_ADMIN`.
 - ✅ `LogAcesso.acessoGlobal` populado em todos os fluxos (AUTORIZADO, NEGADO, PENDENTE) quando a credencial é global.
 - ✅ `IngressoDTO`/`IngressoResponseDTO` expõem o campo.
-- ✅ Nenhum endpoint separado — emissão continua em `POST /api/v1/usuarios/{id}/ingressos`.
+- ✅ Nenhum endpoint separado — emissão continua em `POST /usuarios/{id}/ingressos`.
 - ✅ `PERMISSIONS.md` atualizado.
 - ✅ Credencial global cross-tenant via `IngressoRepository.findByTokenCrossTenant` (sem expor o token em log).
 - ✅ Build passa.

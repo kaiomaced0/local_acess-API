@@ -1,5 +1,6 @@
 package ka.mdo.pendencia;
 
+import ka.mdo.tenant.JwtClaims;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.ObservesAsync;
 import jakarta.inject.Inject;
@@ -416,7 +417,7 @@ public class PendenciaService {
 
     private Long empresaDoJwtOuNull() {
         try {
-            return jwt.getClaim("empresaId");
+            return JwtClaims.empresaIdOrNull(jwt);
         } catch (RuntimeException e) {
             return null;
         }

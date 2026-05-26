@@ -1,8 +1,10 @@
 package ka.mdo.resource;
 
-import ka.mdo.dto.UsuarioResponseDTO;
-import ka.mdo.repository.UsuarioRepository;
-import ka.mdo.service.UsuarioLogadoService;
+import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
 import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -11,12 +13,11 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.jwt.JsonWebToken;
-import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import ka.mdo.dto.UsuarioResponseDTO;
+import ka.mdo.repository.UsuarioRepository;
+import ka.mdo.service.UsuarioLogadoService;
 
-@Path("/api/v1/usuario-logado")
+@Path("/usuario-logado")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Authenticated

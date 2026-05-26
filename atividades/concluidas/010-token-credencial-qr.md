@@ -31,7 +31,7 @@ Cada credencial tem um `token` aleatório único; endpoint retorna o QR code ren
 - `src/main/java/ka/mdo/service/TokenService.java` — gera tokens opacos com `SecureRandom` (32 bytes) em base64url sem padding (43 chars, 256 bits de entropia).
 - `src/main/java/ka/mdo/service/BackfillTokenService.java` — `@Observes StartupEvent` que substitui placeholders `legacy-*` por tokens reais (idempotente, não loga valores).
 - `src/main/java/ka/mdo/qrcode/QrCodeService.java` — `gerarPng(conteudo, tamanho)` e `gerarSvg(conteudo, tamanho)` via ZXing `QRCodeWriter` + `MatrixToImageWriter`. Default 300 px, ECC nível M, margem 1.
-- `src/main/java/ka/mdo/resource/IngressoResource.java` — `GET /api/v1/ingressos/{id}/qrcode` (PNG) e `?formato=svg` (SVG). `@RolesAllowed({"CLIENTE","ADMIN_EMPRESA","GESTOR_EVENTO","GESTOR_LOCAL","SUPER_ADMIN"})`. Resposta com `Cache-Control: no-store`.
+- `src/main/java/ka/mdo/resource/IngressoResource.java` — `GET /ingressos/{id}/qrcode` (PNG) e `?formato=svg` (SVG). `@RolesAllowed({"CLIENTE","ADMIN_EMPRESA","GESTOR_EVENTO","GESTOR_LOCAL","SUPER_ADMIN"})`. Resposta com `Cache-Control: no-store`.
 - `src/main/resources/db/migration/V5__adiciona_token_ingresso.sql` — adiciona coluna + backfill determinístico + índice único.
 
 ### Arquivos alterados
@@ -61,8 +61,8 @@ No startup, `BackfillTokenService` substitui os `legacy-*` por tokens cripto-seg
 - ✅ Token gerado em `IngressoService.adicionarIngresso`.
 - ✅ Dependência ZXing em `pom.xml`.
 - ✅ `QrCodeService.gerarPng` + `gerarSvg`.
-- ✅ Endpoint `GET /api/v1/ingressos/{id}/qrcode` (PNG).
-- ✅ Endpoint `GET /api/v1/ingressos/{id}/qrcode?formato=svg`.
+- ✅ Endpoint `GET /ingressos/{id}/qrcode` (PNG).
+- ✅ Endpoint `GET /ingressos/{id}/qrcode?formato=svg`.
 - ✅ `@RolesAllowed` cobre dono + gestores + SUPER_ADMIN.
 - ✅ Validação multitenancy + dono (CLIENTE) no service.
 - ✅ Token omitido de `IngressoResponseDTO` (nunca exposto em JSON).

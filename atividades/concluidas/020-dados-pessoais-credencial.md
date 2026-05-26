@@ -43,7 +43,7 @@ Optamos por `DadosPessoais` 1:1 com `Usuario` (FK do lado Usuario → `dados_pes
 - `src/main/java/ka/mdo/model/Usuario.java` — adiciona `@OneToOne dadosPessoais` (lado dono da FK).
 - `src/main/java/ka/mdo/model/Evento.java` — adiciona `boolean exigeDadosPessoais`.
 - `src/main/java/ka/mdo/service/AcessoService.java` — implementa passo 6 (dados pessoais): retorna `PENDENTE` com motivo `DADOS_PESSOAIS_INCOMPLETOS` quando o evento exige e o dono não completou.
-- `PERMISSIONS.md` — anexa 5 rotas novas (`/api/v1/dados-pessoais/*`) ao final da tabela, sem reordenar.
+- `PERMISSIONS.md` — anexa 5 rotas novas (`/dados-pessoais/*`) ao final da tabela, sem reordenar.
 
 ### Estratégia de upload multipart
 **Não adicionamos dependência nova** (`quarkus-resteasy-multipart`). Os endpoints `POST /{id}/foto` e `POST /{id}/documento-foto` consomem `application/octet-stream` com o MIME real no header `X-Content-Type`. Essa escolha:
@@ -74,7 +74,7 @@ Optamos pela estratégia **B** (infra). O documento é persistido em claro na co
 - [x] Entidade `DadosPessoais` (nome, documento, tipoDocumento, fotoUrl, dataNascimento) — vinculada a `Usuario` (decisão documentada).
 - [x] `Evento.exigeDadosPessoais` adicionado.
 - [x] Flag ativa + dados ausentes → `PENDENTE` com `DADOS_PESSOAIS_INCOMPLETOS`.
-- [x] Endpoint do cliente: `POST /api/v1/dados-pessoais` (upsert do logado) + `GET /meus`.
+- [x] Endpoint do cliente: `POST /dados-pessoais` (upsert do logado) + `GET /meus`.
 - [x] Upload via `StorageService` (buckets `credenciais-foto` e `documentos`); tamanho/MIME validados por `StorageValidator`.
 - [x] LGPD: acesso logado (LOG.info por id, nunca documento); criptografia em repouso via infra (estratégia B documentada).
 

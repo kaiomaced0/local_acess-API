@@ -1,5 +1,6 @@
 package ka.mdo.service;
 
+import ka.mdo.tenant.JwtClaims;
 import ka.mdo.dto.*;
 import ka.mdo.model.Empresa;
 import ka.mdo.model.Perfil;
@@ -44,7 +45,7 @@ public class UsuarioService {
 
     private Long empresaDoJwtOpcional() {
         try {
-            return jwt.getClaim("empresaId");
+            return JwtClaims.empresaIdOrNull(jwt);
         } catch (Exception e) {
             return null;
         }
@@ -66,6 +67,22 @@ public class UsuarioService {
         Usuario usuario = repository.findByEmailAndSenha(authDTO.login(), senha);
         if (usuario == null) {
             usuario = repository.findByCpfAndSenha(authDTO.login(), senha);
+        }
+        if (usuario == null) {
+            return null;
+        }
+        // Atividade 008: empresa SUSPENSA/ENCERRADA ou soft-deleted não
+        // pode autenticar. Mesma semântica de "credenciais inválidas" — o
+        // AuthResource trata null como 204 "Usuario não encontrado".
+        Empresa empresa = usuario.getEmpresa();
+        if (empresa == null) {
+            return null;
+        }
+        if (Boolean.FALSE.equals(empresa.getAtivo())) {
+            return null;
+        }
+        if (empresa.getStatus() != ka.mdo.model.StatusEmpresa.ATIVA) {
+            return null;
         }
         return usuario;
     }

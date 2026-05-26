@@ -1,11 +1,15 @@
 package ka.mdo.resource;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.logging.Logger;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
@@ -16,16 +20,12 @@ import jakarta.ws.rs.core.MediaType;
 import ka.mdo.dto.ValidarAcessoRequestDTO;
 import ka.mdo.dto.ValidarAcessoResponseDTO;
 import ka.mdo.service.AcessoService;
-import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.jboss.logging.Logger;
 
 /**
  * Endpoints consumidos pelos aparelhos de validação (totens, leitores,
  * tablets) operados pelo perfil {@code OPERADOR_APARELHO}.
  */
-@Path("/api/v1/acesso")
+@Path("/acesso")
 @RolesAllowed("OPERADOR_APARELHO")
 @Tag(name = "Acesso", description = "Validação de credenciais lidas por aparelhos")
 public class AcessoResource {
@@ -102,7 +102,7 @@ public class AcessoResource {
             LOG.debugf("validarComFoto: aparelho=%d bytes=%d",
                     aparelhoId.longValue(), (long) fotoCapturada.length);
         }
-
+        
         if (contentType == null || contentType.isBlank()) {
             contentType = MediaType.APPLICATION_OCTET_STREAM.equals("image/jpeg") ? "image/jpeg" : "image/jpeg";
         }

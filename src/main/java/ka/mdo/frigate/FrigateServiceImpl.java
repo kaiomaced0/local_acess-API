@@ -54,7 +54,7 @@ public class FrigateServiceImpl implements FrigateService {
 
     private static final Logger LOG = Logger.getLogger(FrigateServiceImpl.class);
 
-    @ConfigProperty(name = "quarkus.rest-client.frigate.url", defaultValue = "http://localhost:5000")
+    @ConfigProperty(name = "frigate.url", defaultValue = "http://localhost:5000")
     String frigateUrl;
 
     @ConfigProperty(name = "frigate.timeout-connect-ms", defaultValue = "3000")
@@ -63,8 +63,10 @@ public class FrigateServiceImpl implements FrigateService {
     @ConfigProperty(name = "frigate.timeout-read-ms", defaultValue = "10000")
     long timeoutReadMs;
 
-    @ConfigProperty(name = "frigate.token", defaultValue = "")
-    String frigateToken;
+    // Optional para aceitar a propriedade ausente. O SmallRye Config rejeita
+    // valores vazios mesmo via defaultValue="", então não dá pra usar String.
+    @ConfigProperty(name = "frigate.token")
+    java.util.Optional<String> frigateToken;
 
     @Inject
     ObjectMapper objectMapper;
@@ -134,8 +136,8 @@ public class FrigateServiceImpl implements FrigateService {
         HttpRequest.Builder b = HttpRequest.newBuilder()
                 .uri(URI.create(frigateUrl + path))
                 .timeout(Duration.ofMillis(timeoutReadMs));
-        if (frigateToken != null && !frigateToken.isBlank()) {
-            b.header("Authorization", "Bearer " + frigateToken);
+        if (frigateToken.isPresent() && !frigateToken.get().isBlank()) {
+            b.header("Authorization", "Bearer " + frigateToken.get());
         }
         return b;
     }

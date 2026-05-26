@@ -30,12 +30,12 @@ Entidade `LogAcesso` registrando cada leitura de credencial.
 - `src/main/java/ka/mdo/dto/LogAcessoResponseDTO.java` — record sem token nem dados pessoais (inclui `aparelhoDescricao` por conveniência do operador).
 - `src/main/java/ka/mdo/service/AcessoOcorrido.java` — record imutável transportado entre `AcessoService` e o listener (IDs por valor; sem token).
 - `src/main/java/ka/mdo/service/LogAcessoService.java` — listener `@ObservesAsync` + `@Transactional(REQUIRES_NEW)` para persistir o log; método `buscar(...)` para o resource.
-- `src/main/java/ka/mdo/resource/LogAcessoResource.java` — `GET /api/v1/logs-acesso` com `@RolesAllowed({"ADMIN_EMPRESA","GESTOR_EVENTO","GESTOR_LOCAL","SUPER_ADMIN"})`, query params `credencialId`, `localId`, `de`, `ate`, `pagina`, `tamanho`.
+- `src/main/java/ka/mdo/resource/LogAcessoResource.java` — `GET /logs-acesso` com `@RolesAllowed({"ADMIN_EMPRESA","GESTOR_EVENTO","GESTOR_LOCAL","SUPER_ADMIN"})`, query params `credencialId`, `localId`, `de`, `ate`, `pagina`, `tamanho`.
 - `src/main/resources/db/migration/V7__log_acesso.sql` — tabela `LogAcesso` + índices `idx_log_acesso_empresa_data` e `idx_log_acesso_credencial_data`.
 
 ### Arquivos alterados
 - `src/main/java/ka/mdo/service/AcessoService.java` — injetado `Event<AcessoOcorrido>`; `negar(...)` refatorado para receber `Aparelho`, `credencialId` e `localId`; dois `TODO 012` substituídos por chamada a `dispararLog(...)`. Caso `APARELHO_INEXISTENTE` não persiste log (sem FK possível) — documentado em comentário.
-- `PERMISSIONS.md` — adicionada linha `GET /api/v1/logs-acesso` (SA/AE/GE/GL ✅, OA/CL ❌).
+- `PERMISSIONS.md` — adicionada linha `GET /logs-acesso` (SA/AE/GE/GL ✅, OA/CL ❌).
 
 ### Build status
 `./mvnw.cmd compile -q` — **OK** (exit 0; apenas warnings do runtime Java 17 sobre `sun.misc.Unsafe` em dependências do Maven).
@@ -43,7 +43,7 @@ Entidade `LogAcesso` registrando cada leitura de credencial.
 ### Checklist
 - ✅ Entidade `LogAcesso` com todos os campos solicitados (+ `ativo`/`dataInclusao` herdados de `EntityClass`).
 - ✅ Gravação assíncrona (fire-and-forget via CDI `Event#fireAsync`).
-- ✅ Endpoint `GET /api/v1/logs-acesso` com filtros (credencial, local, data) e roles corretas.
+- ✅ Endpoint `GET /logs-acesso` com filtros (credencial, local, data) e roles corretas.
 - ✅ Índices `(empresa_id, dataHora)` e `(ingresso_id, dataHora)`.
 - ✅ Falha no log NÃO bloqueia o happy path (try/catch em `dispararLog` + `REQUIRES_NEW` no listener).
 - ✅ Token nunca é logado (evento só carrega `ingressoId`).

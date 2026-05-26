@@ -37,7 +37,7 @@ Entidade `Pendencia` e endpoints de resolução com notificações nas duas pont
   - Observer `aoRequererPendencia(@ObservesAsync PendenciaRequerida)` em `@Transactional(REQUIRES_NEW)` — trata exceções sem propagar.
   - `aprovar(id, obs)` / `recusar(id, obs)` idempotentes; aprovação facial reseta `DadosPessoais.rostoFrigateCadastrado=false` (re-enrola na próxima leitura).
   - Notificação via `NotificacaoService` — `PENDENCIA_ABERTA` para gestores (`GESTOR_EVENTO`/`GESTOR_LOCAL` do tenant) e `PENDENCIA_APROVADA`/`PENDENCIA_RECUSADA` para o dono.
-- `src/main/java/ka/mdo/resource/PendenciaResource.java` — `@Path("/api/v1/pendencias")` com `@RolesAllowed({GESTOR_EVENTO,GESTOR_LOCAL,ADMIN_EMPRESA,SUPER_ADMIN})`; `GET /`, `POST /{id}/aprovar`, `POST /{id}/recusar`.
+- `src/main/java/ka/mdo/resource/PendenciaResource.java` — `@Path("/pendencias")` com `@RolesAllowed({GESTOR_EVENTO,GESTOR_LOCAL,ADMIN_EMPRESA,SUPER_ADMIN})`; `GET /`, `POST /{id}/aprovar`, `POST /{id}/recusar`.
 - `src/main/resources/db/migration/V13__pendencia.sql` — tabela com FKs + índices `(empresa_id, status, criadaEm)` e `(credencial_id, status)`.
 
 ### Arquivos alterados

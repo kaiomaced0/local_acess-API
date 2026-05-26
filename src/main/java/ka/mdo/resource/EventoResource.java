@@ -18,7 +18,7 @@ import java.util.List;
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-@Path("/api/v1/eventos")
+@Path("/eventos")
 @Authenticated
 @Tag(name = "Eventos", description = "Gestão de eventos e espaços de evento da empresa")
 public class EventoResource {

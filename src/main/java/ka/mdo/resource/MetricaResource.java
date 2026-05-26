@@ -29,7 +29,7 @@ import java.util.List;
  * <p>Cache de 30s em memória (TTL fixo, sem invalidação ativa) — ver
  * {@link MetricaService}.
  */
-@Path("/api/v1/metricas/evento/{eventoId}")
+@Path("/metricas/evento/{eventoId}")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"GESTOR_EVENTO", "ADMIN_EMPRESA", "SUPER_ADMIN", "GESTOR_LOCAL"})

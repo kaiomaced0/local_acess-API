@@ -35,7 +35,7 @@ Optamos por **`TipoIngresso`** (reutilização). `TipoIngresso` já é multitena
 - `src/main/java/ka/mdo/dto/AutorizacaoResponseDTO.java` — response com `TipoIngressoResumo(id, nome)` (nunca expõe a entidade).
 - `src/main/java/ka/mdo/repository/AutorizacaoAuditoriaRepository.java`.
 - `src/main/java/ka/mdo/service/AutorizacaoEspacoService.java` — `listar` / `adicionar` / `remover` / `substituir`, multitenant + auditoria na mesma transação.
-- `src/main/java/ka/mdo/resource/AutorizacaoEspacoResource.java` — 4 endpoints em `/api/v1/espacos-evento/{espacoId}/autorizacoes`.
+- `src/main/java/ka/mdo/resource/AutorizacaoEspacoResource.java` — 4 endpoints em `/espacos-evento/{espacoId}/autorizacoes`.
 - `src/main/resources/db/migration/V11__autorizacoes_locais.sql` — tabela de associação (PK composta + índice inverso) e `AutorizacaoAuditoria` (índices por empresa/data e por espaço/data).
 
 ### Arquivos alterados

@@ -24,7 +24,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
  * 030 e 031: com o vínculo persistido, {@code GESTOR_LOCAL} passa a ter
  * visibilidade reduzida em logs, pendências e métricas.
  */
-@Path("/api/v1/gestores")
+@Path("/gestores")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"ADMIN_EMPRESA", "SUPER_ADMIN"})

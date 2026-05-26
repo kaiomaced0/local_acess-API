@@ -29,7 +29,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
  * operar sobre locais vinculados a ele via {@link ka.mdo.model.GestorLocal}
  * (atividade 041) — o service valida; fora dos locais vinculados é 403.
  */
-@Path("/api/v1/espacos-evento/{espacoId}/autorizacoes")
+@Path("/espacos-evento/{espacoId}/autorizacoes")
 @RolesAllowed({"GESTOR_EVENTO", "ADMIN_EMPRESA", "SUPER_ADMIN", "GESTOR_LOCAL"})
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)

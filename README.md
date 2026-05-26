@@ -38,9 +38,9 @@ de migração versionados.
 A API expõe um contrato OpenAPI 3 estável para consumo pelo frontend e pelo app
 dos aparelhos.
 
-- **Rotas versionadas**: todos os endpoints ficam sob o prefixo `/api/v1/*`
-  (ex.: `/api/v1/auth`, `/api/v1/usuarios`, `/api/v1/eventos`,
-  `/api/v1/empresas`, `/api/v1/usuario-logado`). Breaking changes futuros
+- **Rotas versionadas**: todos os endpoints ficam sob o prefixo `/*`
+  (ex.: `/auth`, `/usuarios`, `/eventos`,
+  `/empresas`, `/usuario-logado`). Breaking changes futuros
   entram em `/api/v2` sem quebrar clientes atuais.
 - **Contrato OpenAPI**: disponível em `/openapi` (JSON) e `/openapi?format=yaml`
   (YAML). Também há `/q/openapi` por default do Quarkus.

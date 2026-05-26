@@ -34,11 +34,11 @@ Endpoint único que recebe token + contexto (evento/local/aparelho) e retorna de
 - `src/main/java/ka/mdo/dto/ValidarAcessoResponseDTO.java` — record com resultado/motivo/credencialId/exigeValidacaoFacial.
 - `src/main/java/ka/mdo/repository/AparelhoRepository.java` — `PanacheRepository<Aparelho>`.
 - `src/main/java/ka/mdo/service/AcessoService.java` — orquestra validação e decide resultado.
-- `src/main/java/ka/mdo/resource/AcessoResource.java` — `POST /api/v1/acesso/validar`, `@RolesAllowed("OPERADOR_APARELHO")`.
+- `src/main/java/ka/mdo/resource/AcessoResource.java` — `POST /acesso/validar`, `@RolesAllowed("OPERADOR_APARELHO")`.
 - `src/main/resources/db/migration/V6__aparelho_resultado_acesso.sql` — cria tabela `Aparelho` com FKs para `Empresa`, `EspacoEvento`, `Evento` + índice `ix_aparelho_empresa`.
 
 ### Arquivos alterados
-- `PERMISSIONS.md` — adicionada linha `POST /api/v1/acesso/validar` (OPERADOR_APARELHO ✅, demais ❌).
+- `PERMISSIONS.md` — adicionada linha `POST /acesso/validar` (OPERADOR_APARELHO ✅, demais ❌).
 
 ### Fluxo de validação implementado
 1. Aparelho existe?

@@ -25,7 +25,7 @@ import java.util.List;
  * empresa — os parâmetros aceitos aqui são todos opcionais e servem para
  * narrow-down, nunca para "escolher o tenant".
  */
-@Path("/api/v1/logs-acesso")
+@Path("/logs-acesso")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"ADMIN_EMPRESA", "GESTOR_EVENTO", "GESTOR_LOCAL", "SUPER_ADMIN"})

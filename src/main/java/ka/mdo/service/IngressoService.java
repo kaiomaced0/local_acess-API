@@ -1,5 +1,6 @@
 package ka.mdo.service;
 
+import ka.mdo.tenant.JwtClaims;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -42,7 +43,7 @@ public class IngressoService {
     JsonWebToken jwt;
 
     private Long empresaDoJwt() {
-        Long empresaId = jwt.getClaim("empresaId");
+        Long empresaId = JwtClaims.empresaIdOrNull(jwt);
         if (empresaId == null) {
             throw new ForbiddenException("JWT sem empresaId");
         }
@@ -79,7 +80,12 @@ public class IngressoService {
         ingresso.setEscopoGlobal(dto.escopoGlobal());
         repository.persist(ingresso);
         u.getIngressos().add(ingresso);
-        return Response.ok(new IngressoResponseDTO(ingresso)).build();
+        // Atividade 013: emissão expõe um recurso novo, então respondemos
+        // 201 Created. O response DTO nunca carrega o token bruto (apenas o
+        // id, usado para gerar o QR via /ingressos/{id}/qrcode).
+        return Response.status(Response.Status.CREATED)
+                .entity(new IngressoResponseDTO(ingresso))
+                .build();
     }
 
     /**

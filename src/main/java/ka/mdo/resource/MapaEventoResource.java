@@ -37,7 +37,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
  * no body + header {@code X-Content-Type} com o MIME real. Evita depender
  * de {@code quarkus-resteasy-multipart}.
  */
-@Path("/api/v1/eventos/{eventoId}/mapa")
+@Path("/eventos/{eventoId}/mapa")
 @Authenticated
 @Tag(name = "Mapa do evento", description = "Mapa 2D do evento com polígonos por EspacoEvento")
 public class MapaEventoResource {

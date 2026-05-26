@@ -1,5 +1,6 @@
 package ka.mdo.service;
 
+import ka.mdo.tenant.JwtClaims;
 import java.util.Optional;
 
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -73,7 +74,7 @@ public class DadosPessoaisService {
     // ---------- tenant / auth helpers ----------
 
     private Long empresaDoJwt() {
-        Long empresaId = jwt.getClaim("empresaId");
+        Long empresaId = JwtClaims.empresaIdOrNull(jwt);
         if (empresaId == null) {
             throw new ForbiddenException("JWT sem empresaId");
         }

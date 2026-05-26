@@ -48,7 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * para esse usuário.
  */
 @ApplicationScoped
-@ServerEndpoint("/api/v1/ws/notificacoes")
+@ServerEndpoint("/ws/notificacoes")
 public class WebsocketChannel {
 
     private static final Logger LOG = Logger.getLogger(WebsocketChannel.class);

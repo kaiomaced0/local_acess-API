@@ -50,7 +50,7 @@ public class TenantRequestFilter implements ContainerRequestFilter {
             if (jwt == null || jwt.getRawToken() == null) {
                 return;
             }
-            Long empresaId = jwt.getClaim("empresaId");
+            Long empresaId = JwtClaims.empresaIdOrNull(jwt);
             Set<String> groups = jwt.getGroups();
             boolean isSuperAdmin = groups != null && groups.contains(PERFIL_SUPER_ADMIN);
 
