@@ -27,6 +27,11 @@ Legenda:
 |--------|------|----|----|----|----|----|----|---------|
 | POST | `/auth` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔓 |
 | POST | `/empresas` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| GET | `/empresas` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| GET | `/empresas/{id}` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| PUT | `/empresas/{id}` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| PATCH | `/empresas/{id}/status` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| DELETE | `/empresas/{id}` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | GET | `/eventos` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | GET | `/eventos/{id}` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | POST | `/eventos` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -187,3 +192,16 @@ Legenda:
   só toca `ativo` na criação). Aparelho inativo segue sendo
   rejeitado em `POST /acesso/validar` (regra pré-existente do
   `AcessoService`).
+- Atividade 008 (CRUD/listagem de Empresa): expande os endpoints de
+  `/empresas` com `GET` (listagem paginada + busca por id),
+  `PUT` (atualiza nome/cnpj), `PATCH /{id}/status` (transição entre
+  `ATIVA`/`SUSPENSA`/`ENCERRADA`; `ENCERRADA` é estado final, demais
+  transições 409) e `DELETE` (soft-delete). Todos exclusivos de
+  `SUPER_ADMIN`. Como `Empresa` é o próprio tenant-root, o filtro
+  Hibernate `tenantFilter` não se aplica — e `SUPER_ADMIN` também
+  desativa o filtro globalmente, portanto as queries do
+  `EmpresaRepository` operam sem clausulagem por tenant. Adicional:
+  `UsuarioService.byLoginAndSenha` passou a rejeitar (retornando
+  `null`, mesma semântica de credenciais inválidas / 204) login de
+  usuários cuja `Empresa.status != ATIVA` ou cuja empresa esteja
+  soft-deleted (`ativo=false`).

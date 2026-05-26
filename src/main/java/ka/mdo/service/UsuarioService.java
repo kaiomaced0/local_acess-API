@@ -67,6 +67,22 @@ public class UsuarioService {
         if (usuario == null) {
             usuario = repository.findByCpfAndSenha(authDTO.login(), senha);
         }
+        if (usuario == null) {
+            return null;
+        }
+        // Atividade 008: empresa SUSPENSA/ENCERRADA ou soft-deleted não
+        // pode autenticar. Mesma semântica de "credenciais inválidas" — o
+        // AuthResource trata null como 204 "Usuario não encontrado".
+        Empresa empresa = usuario.getEmpresa();
+        if (empresa == null) {
+            return null;
+        }
+        if (Boolean.FALSE.equals(empresa.getAtivo())) {
+            return null;
+        }
+        if (empresa.getStatus() != ka.mdo.model.StatusEmpresa.ATIVA) {
+            return null;
+        }
         return usuario;
     }
 
