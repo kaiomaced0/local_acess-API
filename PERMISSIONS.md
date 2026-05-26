@@ -73,6 +73,11 @@ Legenda:
 | PUT | `/aparelhos/{id}` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | PATCH | `/aparelhos/{id}/desativar` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | PATCH | `/aparelhos/{id}/reativar` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| GET | `/tipos-ingresso` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| GET | `/tipos-ingresso/{id}` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| POST | `/tipos-ingresso` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| PUT | `/tipos-ingresso/{id}` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| DELETE | `/tipos-ingresso/{id}` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ## Notas
 
@@ -146,6 +151,15 @@ Legenda:
   (observer do evento CDI `PendenciaRequerida`, disparado pelo
   `AcessoService` / `FacialValidationService`) — não há endpoint público
   para abrir pendência manualmente.
+- Atividade 015 (CRUD de TipoIngresso): rotas `/tipos-ingresso` (sem
+  prefixo `/api/v1`, seguindo a convenção pós-`4e946d0`) restritas a
+  `ADMIN_EMPRESA`, `GESTOR_EVENTO` e `SUPER_ADMIN`. Multitenancy via
+  `tenantFilter` do Hibernate + checagem explícita em leituras por id.
+  Unicidade do nome por empresa garantida pelo service (pré-validação)
+  e pela constraint `uk_tipoingresso_empresa_nome` (V16, rede de
+  segurança contra concorrência). DELETE é soft-delete (`ativo=false`)
+  e responde 409 se existir `Ingresso` ativo referenciando o tipo —
+  evita órfãos no fluxo de credenciais.
 - Atividade 041 (dashboards do gestor): três endpoints
   `GET /metricas/evento/{id}/{ocupacao|entradas|pendencias}` com
   cache em memória de 30s. `GESTOR_LOCAL` tem a visão restringida aos
