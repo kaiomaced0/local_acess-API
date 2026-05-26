@@ -37,6 +37,8 @@ Legenda:
 | POST | `/usuarios` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | PUT | `/usuarios/{id}` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | PATCH | `/usuarios/delete/{id}` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| POST | `/usuarios/{idUsuario}/ingressos` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| GET | `/ingressos/{id}/qrcode` | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
 | GET | `/usuario-logado` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | POST | `/acesso/validar` | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | POST | `/acesso/validar-com-foto` | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
@@ -92,9 +94,17 @@ Legenda:
   (ver `WebsocketChannel`). Qualquer outra mensagem inicial fecha a
   conexão. Após autenticado, só recebe notificações destinadas ao próprio
   usuário (subject do JWT).
+- Atividade 013 (endpoint de emissão de credencial): exposição HTTP de
+  `POST /usuarios/{idUsuario}/ingressos`, restrito a `ADMIN_EMPRESA`,
+  `GESTOR_EVENTO` e `SUPER_ADMIN`. Implementado em `IngressoResource`
+  (sub-resource path) — devolve `201 Created` com `IngressoResponseDTO`
+  (sem token bruto). 403 quando o usuário-alvo ou o `TipoIngresso` é de
+  outro tenant. O gate do campo `escopoGlobal` (atividade 033) continua
+  no service e roda antes da persistência.
 - Atividade 033 (credenciais globais): o endpoint de emissão
-  (`POST /usuarios/{id}/ingressos`) aceita o campo opcional
-  `escopoGlobal` no request. Gate de emissão aplicado no `IngressoService`:
+  (`POST /usuarios/{idUsuario}/ingressos`, exposto na atividade 013) aceita o
+  campo opcional `escopoGlobal` no request. Gate de emissão aplicado no
+  `IngressoService`:
   - `escopoGlobal=SUPER` (cross-tenant): somente `SUPER_ADMIN` pode emitir.
   - `escopoGlobal=EMPRESA`: somente `ADMIN_EMPRESA` ou `SUPER_ADMIN`.
   - `escopoGlobal=null` (default): regras atuais de emissão.
