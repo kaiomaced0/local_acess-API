@@ -65,6 +65,12 @@ Legenda:
 | GET | `/metricas/evento/{eventoId}/pendencias` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | POST | `/gestores/{usuarioId}/locais/{localId}` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | DELETE | `/gestores/{usuarioId}/locais/{localId}` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| GET | `/aparelhos` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| GET | `/aparelhos/{id}` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| POST | `/aparelhos` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| PUT | `/aparelhos/{id}` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| PATCH | `/aparelhos/{id}/desativar` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| PATCH | `/aparelhos/{id}/reativar` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ## Notas
 
@@ -141,3 +147,19 @@ Legenda:
   visibilidade do `GESTOR_LOCAL`. Adicionada a coluna
   `LogAcesso.tipoMovimento` (`ENTRADA`/`SAIDA`, default `ENTRADA` em
   migração + drop default) usada no cálculo de ocupação.
+- Atividade 014 (CRUD de aparelho): rotas `/aparelhos` restritas a
+  `ADMIN_EMPRESA` e `SUPER_ADMIN` (o painel do gestor é o único
+  consumidor). Listagem suporta filtros opcionais `ativo`, `eventoId` e
+  `localEspecificoId` mais paginação (`pagina`/`tamanho`, default 0/20).
+  Empresa do aparelho vem SEMPRE do JWT — `AparelhoDTO` não aceita
+  `empresaId` no payload. Validação cross-tenant de `eventoId` e
+  `localEspecificoId` apoia-se no `tenantFilter` do Hibernate já ativo
+  para `Evento` e `EspacoEvento`: um id pertencente a outro tenant
+  retorna `null` no `findById` filtrado, e o service responde 403
+  ("Evento/Espaço pertence a outra empresa ou não existe") em vez de
+  404 — isso evita confundir o painel com "recurso inexistente neste
+  tenant". `PATCH /aparelhos/{id}/desativar` e `/reativar` fazem
+  UPDATE explícito do campo `ativo` (o `prePersist` da `EntityClass`
+  só toca `ativo` na criação). Aparelho inativo segue sendo
+  rejeitado em `POST /acesso/validar` (regra pré-existente do
+  `AcessoService`).
