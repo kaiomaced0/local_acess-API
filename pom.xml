@@ -129,6 +129,12 @@
         <artifactId>quarkus-maven-plugin</artifactId>
         <version>${quarkus.platform.version}</version>
         <extensions>true</extensions>
+        <configuration>
+          <!-- Permite o bytecode enhancement do Hibernate (Byte Buddy) rodar
+               em JDKs mais novos que o alvo do projeto (Java 17). Aplicado
+               à JVM forkada pelo quarkus:dev. No-op no JDK 17. -->
+          <jvmArgs>-Dnet.bytebuddy.experimental=true</jvmArgs>
+        </configuration>
         <executions>
           <execution>
             <goals>
